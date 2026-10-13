@@ -1,4 +1,2 @@
 # CJNProperty
-Gestão Imobiliária
-[cjnproperty-pwa.zip](https://github.com/user-attachments/files/33394433/cjnproperty-pwa.zip)
-
+[CJNProperty (3).html](https://github.com/user-attachments/files/33398694/CJNProperty.3.html)
