@@ -64,7 +64,6 @@ Ajustes feitos ao importar a planilha original:
 - Os códigos das abas não batiam entre si (por exemplo "Casa" e "8a9100a6"). Os contratos foram ligados aos imóveis pelo endereço e pelo valor do aluguel. Conferir.
 - CPFs que o Excel tinha cortado (zero à esquerda) foram corrigidos.
 - O imóvel CJr estava sem situação e entrou como Disponível.
-- A chave Pix da Joana Darc é igual à do Carlos José. Pode ser engano de cópia.
 - As abas Usuarios e Vistorias estavam vazias e ainda não foram incluídas no app.
 
 ---
