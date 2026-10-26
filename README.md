@@ -1,2 +1,5 @@
 # CJNProperty
-[CJNProperty (3).html](https://github.com/user-attachments/files/33398694/CJNProperty.3.html)
+
+Gestão de imóveis, contratos, pagamentos e recibos de aluguel (PWA).
+
+Leia **INSTRUCOES.md** para publicar no GitHub Pages, conectar a planilha do Google e usar o app.
