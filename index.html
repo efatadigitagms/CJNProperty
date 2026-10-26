@@ -129,12 +129,14 @@ label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute
 .recibo .ass{margin-top:46px;text-align:center;display:flex;flex-direction:column;gap:2px;align-items:center}
 .recibo .ass .ln{width:min(320px,80%);border-top:1px solid #14182c;margin-bottom:6px}
 .recibo .ass span{font-size:12px;color:#5d6a82}
+.recibo .ass .sig{height:56px;max-width:240px;object-fit:contain;margin:-40px 0 -16px;position:relative;z-index:1}
+.sigbox{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.sigbox .pv{min-width:160px;height:64px;border:1px dashed var(--line);border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5d6a82}.sigbox .pv img{max-height:60px;max-width:220px}
 .recibo.via2{display:none}
 .recibo footer{margin-top:28px;font-size:11px;color:#5d6a82;text-align:center}
 .rwrap .racts{display:flex;gap:8px;flex-wrap:wrap;align-items:end;justify-content:space-between;background:var(--surface);padding:12px;border-radius:8px;border:1px solid var(--line)}
 .rwrap .racts .bar{align-items:end}
 a.btn{text-decoration:none;display:inline-block}
-@media print{body{background:#fff!important;padding:0}.shell,.toast,.noprint{display:none!important}.modal{position:static;background:none;padding:0;display:block}.rwrap{max-width:none;overflow:visible}.recibo{border-radius:0;padding:10px 0 0;font-size:12px;line-height:1.45;break-inside:avoid}.recibo header{padding-bottom:10px;margin-bottom:10px}.recibo header img{height:40px}.recibo dl{margin:10px 0;padding:8px 12px}.recibo .ass{margin-top:30px}.recibo footer{margin-top:14px}.recibo.via2{display:block;margin-top:26px;position:relative}.recibo.via2::before{content:'';position:absolute;top:-14px;left:0;right:0;border-top:1px dashed #888}}
+@media print{body{background:#fff!important;padding:0}.shell,.toast,.noprint{display:none!important}.modal{position:static;background:none;padding:0;display:block}.rwrap{max-width:none;overflow:visible}.recibo{border-radius:0;padding:10px 0 0;font-size:12px;line-height:1.45;break-inside:avoid}.recibo header{padding-bottom:10px;margin-bottom:10px}.recibo header img{height:40px}.recibo dl{margin:10px 0;padding:8px 12px}.recibo .ass{margin-top:30px}.recibo .ass .sig{height:44px;margin:-26px 0 -12px}.recibo footer{margin-top:14px}.recibo.via2{display:block;margin-top:26px;position:relative}.recibo.via2::before{content:'';position:absolute;top:-14px;left:0;right:0;border-top:1px dashed #888}}
 @media (max-width:760px){.recibo{padding:20px 16px}.recibo header{flex-wrap:wrap}.recibo .rv{margin-left:0;width:100%}}
 .foot{margin-top:18px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px}
 nav.side .foot button{font-size:12px;border:1px solid var(--line);justify-content:center}
@@ -167,7 +169,7 @@ window.CJN=true;
   const COLS=['imoveis','locadores','locatarios','contratos','pagamentos'];
   const FIELDS={
     imoveis:['codigo','endereco','bairro','tipo','aluguel','status','foto'],
-    locadores:['nome','doc','pix'],
+    locadores:['nome','doc','pix','assinatura'],
     locatarios:['nome','cpf','telefone','email','profissao'],
     contratos:['numero','imovelId','locadorId','locatarioId','entrada','saida','valor','status','pdf'],
     pagamentos:['contratoId','referencia','valor','vencimento','dataPagamento','forma']};
@@ -385,7 +387,7 @@ const SCHEMA={
     ['endereco','Endereço','text','full'],['bairro','Bairro','text'],['aluguel','Valor do aluguel (R$)','number'],
     ['status','Situação','select',['Alugado','Disponível','Em manutenção']],['foto','Foto','file','image/*']]},
   locadores:{titulo:'Locador',campos:[
-    ['nome','Nome completo','text','full'],['doc','CPF / CNPJ','text'],['pix','Chave Pix','text']]},
+    ['nome','Nome completo','text','full'],['doc','CPF / CNPJ','text'],['pix','Chave Pix','text'],['assinatura','Assinatura digital (PNG)','sig','full']]},
   locatarios:{titulo:'Locatário',campos:[
     ['nome','Nome completo','text','full'],['cpf','CPF','text'],['telefone','Telefone','text'],['email','E-mail','text'],['profissao','Profissão','text']]},
   contratos:{titulo:'Contrato',campos:[
@@ -410,6 +412,7 @@ function openForm(col,id,preset){
     let inp='';
     if(t==='select'){inp=`<select id="f_${k}">${x.map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select>`}
     else if(t==='rel'){inp=`<select id="f_${k}"><option value="">Selecione…</option>${x().map(([val,lab])=>`<option value="${esc(val)}" ${val===v?'selected':''}>${esc(lab)}</option>`).join('')}</select>`}
+    else if(t==='sig'){inp=`<input id="f_${k}" type="hidden" value="${esc(v)}"><div class="sigbox"><div class="pv" id="sigPv">${v?`<img src="${esc(v)}" alt="Assinatura">`:'Sem assinatura'}</div><div><input id="sigFile" type="file" accept="image/png,image/*"><button type="button" class="btn sm ghost" data-recact="sigdel">Remover</button></div></div><span class="sub">PNG com fundo transparente funciona melhor. Aparece nos recibos.</span>`}
     else if(t==='file'){
       if(!assets){return `<label class="full">${l} (link do Google Drive ou endereço)<input id="f_${k}" type="url" value="${esc(v)}" placeholder="https://…"></label>`}
       inp=`<input id="f_${k}" type="file" accept="${x}">${v?`<a class="link" href="${esc(v)}" target="_blank" rel="noopener">Ver arquivo atual</a>`:''}`}
@@ -612,6 +615,33 @@ function extenso(v){
   return out.length?out.join(' e '):'zero real';
 }
 function imgSrc(u){const m=String(u||'').match(/drive\.google\.com\/file\/d\/([^/?#]+)/)||String(u||'').match(/drive\.google\.com\/(?:open|uc)\?[^#]*id=([^&#]+)/);return m?`https://drive.google.com/thumbnail?id=${m[1]}&sz=w800`:u}
+
+function sigSet(u){const h=document.getElementById('f_assinatura'),pv=document.getElementById('sigPv');if(h)h.value=u||'';if(pv)pv.innerHTML=u?`<img src="${u}" alt="Assinatura">`:'Sem assinatura'}
+async function sigLoad(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  try{
+    const url=URL.createObjectURL(f),img=new Image();img.src=url;await img.decode();
+    let w=img.naturalWidth,h=img.naturalHeight;
+    const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+    cv.width=w;cv.height=h;cx.drawImage(img,0,0);URL.revokeObjectURL(url);
+    let d=cx.getImageData(0,0,w,h),a=d.data,opaque=true;
+    for(let i=3;i<a.length;i+=4)if(a[i]<250){opaque=false;break}
+    if(opaque)for(let i=0;i<a.length;i+=4)if(a[i]>235&&a[i+1]>235&&a[i+2]>235)a[i+3]=0;
+    let x0=w,y0=h,x1=-1,y1=-1;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(a[(y*w+x)*4+3]>20){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+    if(x1<0){toast('A imagem não tem assinatura visível');inp.value='';return}
+    cx.putImageData(d,0,0);
+    const cw=x1-x0+1,ch=y1-y0+1;
+    let sc=Math.min(1,360/cw,140/ch),out='';
+    for(let k=0;k<8;k++){
+      const c2=document.createElement('canvas');c2.width=Math.max(1,Math.round(cw*sc));c2.height=Math.max(1,Math.round(ch*sc));
+      c2.getContext('2d').drawImage(cv,x0,y0,cw,ch,0,0,c2.width,c2.height);
+      out=c2.toDataURL('image/png');if(out.length<=42000)break;sc*=.75;
+    }
+    if(out.length>42000){toast('Imagem muito detalhada. Use uma assinatura mais simples.');inp.value='';return}
+    sigSet(out);toast('Assinatura carregada. Clique em Salvar.');
+  }catch(err){toast('Não foi possível ler a imagem')}
+}
 function reciboInfo(p){
   const c=by('contratos',p.contratoId);
   return {c,im:by('imoveis',c?.imovelId),lt:by('locatarios',c?.locatarioId),ld:by('locadores',c?.locadorId),
@@ -661,6 +691,11 @@ async function reciboPdf(p){
     c+=`BT /${f} ${sz} Tf ${color} rg ${n2(x)} ${n2(H-top)} Td (${enc(t)}) Tj ET\n`};
   const wrap=(t,f,sz,max)=>{const words=String(t).split(' '),lines=[];let cur='';
     for(const w of words){const x=cur?cur+' '+w:w;if(wid(x,f,sz)>max&&cur){lines.push(cur);cur=w}else cur=x}if(cur)lines.push(cur);return lines};
+  let sg=null;
+  if(ld?.assinatura){try{const si=new Image();si.src=ld.assinatura;await si.decode();
+    const sw=si.naturalWidth,sh=si.naturalHeight,sc=document.createElement('canvas');sc.width=sw;sc.height=sh;
+    const sx=sc.getContext('2d');sx.fillStyle='#fff';sx.fillRect(0,0,sw,sh);sx.drawImage(si,0,0);
+    sg={w:sw,h:sh,jb:atob(sc.toDataURL('image/jpeg',.92).split(',')[1])}}catch(err){sg=null}}
   const lh=40,lw=lh*iw/ih,M2=48,CW=W-2*M2;
   const via=(t0,lbl)=>{
     c+=`${BLUE} rg 0 ${n2(H-t0-5)} ${n2(W)} 5 re f\n`;
@@ -680,6 +715,7 @@ async function reciboPdf(p){
     y+=40+22;
     text(M2,y,'Dou plena e geral quitação do valor acima.','F1',10.5,INK);
     y+=58;
+    if(sg){const gh=40,gw=Math.min(170,gh*sg.w/sg.h),gh2=gw*sg.h/sg.w;c+=`q ${n2(gw)} 0 0 ${n2(gh2)} ${n2(W/2-gw/2)} ${n2(H-y+3)} cm /Im2 Do Q\n`}
     c+=`0.8 w ${INK} RG ${n2(W/2-120)} ${n2(H-y)} m ${n2(W/2+120)} ${n2(H-y)} l S\n`;
     text(W/2,y+13,ld?.nome||'Locador','F2',11,INK,'c');
     const sub=[ld?.doc?'CPF/CNPJ '+cpf(ld.doc):'',ld?.pix?'Pix: '+ld.pix:''].filter(Boolean).join('  -  ');
@@ -692,14 +728,16 @@ async function reciboPdf(p){
   const o=[];
   o[1]='<< /Type /Catalog /Pages 2 0 R >>';
   o[2]='<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
-  o[3]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >> /XObject << /Im1 9 0 R >> >> /Contents 4 0 R >>`;
+  o[3]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >> /XObject << /Im1 9 0 R${sg?' /Im2 10 0 R':''} >> >> /Contents 4 0 R >>`;
   o[4]=`<< /Length ${c.length} >>\nstream\n${c}endstream`;
   ['Helvetica','Helvetica-Bold','Courier','Courier-Bold'].forEach((f,i)=>{o[5+i]=`<< /Type /Font /Subtype /Type1 /BaseFont /${f} /Encoding /WinAnsiEncoding >>`});
   o[9]=`<< /Type /XObject /Subtype /Image /Width ${iw} /Height ${ih} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jb.length} >>\nstream\n${jb}\nendstream`;
+  if(sg)o[10]=`<< /Type /XObject /Subtype /Image /Width ${sg.w} /Height ${sg.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${sg.jb.length} >>\nstream\n${sg.jb}\nendstream`;
+  const NO=sg?10:9;
   let out='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';const off=[];
-  for(let i=1;i<=9;i++){off[i]=out.length;out+=`${i} 0 obj\n${o[i]}\nendobj\n`}
+  for(let i=1;i<=NO;i++){off[i]=out.length;out+=`${i} 0 obj\n${o[i]}\nendobj\n`}
   const xr=out.length;
-  out+='xref\n0 10\n0000000000 65535 f \n'+off.slice(1).map(x=>String(x).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size 10 /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`;
+  out+=`xref\n0 ${NO+1}\n`+'0000000000 65535 f \n'+off.slice(1).map(x=>String(x).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${NO+1} /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`;
   const bytes=new Uint8Array(out.length);for(let i=0;i<out.length;i++)bytes[i]=out.charCodeAt(i)&255;
   return bytes;
 }
@@ -726,7 +764,7 @@ function openRecibo(id,over){
       <p>Recebi de <b>${esc(lt?.nome||'—')}</b>${lt?.cpf?`, CPF ${esc(cpf(lt.cpf))}`:''}, a importância de <b>${brl(v)}</b> (${esc(extenso(v))}), referente ao aluguel do mês de <b>${esc(mesLabel(p.referencia))}</b> do imóvel situado em <b>${esc(im?.endereco||'—')}</b>${im?.bairro?`, bairro ${esc(im.bairro)}`:''}.</p>
       <dl><div><dt>Vencimento</dt><dd>${dt(p.vencimento)}</dd></div><div><dt>Data do pagamento</dt><dd>${dt(p.dataPagamento)}</dd></div><div><dt>Forma de pagamento</dt><dd>${esc(p.forma||'—')}</dd></div></dl>
       <p>Dou plena e geral quitação do valor acima.</p>
-      <div class="ass"><div class="ln"></div><b>${esc(ld?.nome||'Locador')}</b><span>${ld?.doc?'CPF/CNPJ '+esc(cpf(ld.doc)):''}${ld?.pix?' · Pix: '+esc(ld.pix):''}</span></div>
+      <div class="ass">${ld?.assinatura?`<img class="sig" src="${esc(ld.assinatura)}" alt="Assinatura">`:''}<div class="ln"></div><b>${esc(ld?.nome||'Locador')}</b><span>${ld?.doc?'CPF/CNPJ '+esc(cpf(ld.doc)):''}${ld?.pix?' · Pix: '+esc(ld.pix):''}</span></div>
       <footer>CJNProperty · emitido em ${dt(today())} · ${lbl}</footer></article>`;
     layer.innerHTML=`<div class="modal"><div class="rwrap">${art('1ª via')}${art('2ª via',1)}
       <div class="racts noprint"><p class="sub" style="width:100%;margin:0 0 4px">No PDF e na impressão saem 2 vias iguais na mesma folha.</p><div class="bar"><label>Data do pagamento<input id="recData" type="date" value="${esc(p.dataPagamento||'')}"></label><label>Forma de pagamento<select id="recForma">${['','Pix','Dinheiro','Transferência','Cartão','Boleto'].map(o=>`<option ${o===(p.forma||'')?'selected':''}>${o}</option>`).join('')}</select></label></div>
@@ -761,7 +799,7 @@ document.addEventListener('click',async e=>{
   const d=t.dataset;
   if(d.view){view=d.view;render()}
   else if(d.rec){openRecibo(d.rec)}
-  else if(d.recact){const a=d.recact;if(a==='close')document.getElementById('layer').innerHTML='';else if(a==='print')window.print();else if(a==='pdf')baixarPdf(RECIBO.p);else if(a==='copy'){const tx=reciboTexto(RECIBO.p);try{await navigator.clipboard.writeText(tx);toast('Texto copiado')}catch(err){toast('Não foi possível copiar')}}}
+  else if(d.recact){const a=d.recact;if(a==='sigdel'){sigSet('')}else if(a==='close')document.getElementById('layer').innerHTML='';else if(a==='print')window.print();else if(a==='pdf')baixarPdf(RECIBO.p);else if(a==='copy'){const tx=reciboTexto(RECIBO.p);try{await navigator.clipboard.writeText(tx);toast('Texto copiado')}catch(err){toast('Não foi possível copiar')}}}
   else if(d.modo){pagModo=d.modo;render()}
   else if(d.cal){calMes=d.cal;render()}
   else if(d.genone){try{await criarCobranca(by('contratos',calContrato),d.genone);toast('Cobrança gerada')}catch(err){toast('Sem permissão para gerar')}}
@@ -774,6 +812,7 @@ document.addEventListener('click',async e=>{
   else if(d.pay){const p=by('pagamentos',d.pay);if(!p.dataPagamento){openPagar(p.id)}else{try{await db.collection('pagamentos').doc(p.id).update({dataPagamento:''});toast('Pagamento desfeito')}catch(err){toast('Sem permissão para alterar')}}}
 });
 document.addEventListener('change',e=>{if(e.target.id==='selMes'){pagMes=e.target.value;render()}
+  if(e.target.id==='sigFile'){sigLoad(e.target)}
   if(e.target.id==='selRec'){recMes=e.target.value;render()}
   if(e.target.id==='recData'&&RECIBO){const v=e.target.value;if(!v){toast('Informe a data do pagamento');RECIBO.draw();return}RECIBO.p.dataPagamento=v;db.collection('pagamentos').doc(RECIBO.id).update({dataPagamento:v}).catch(()=>toast('Sem permissão para salvar'));RECIBO.draw()}
   if(e.target.id==='recForma'&&RECIBO){RECIBO.p.forma=e.target.value;db.collection('pagamentos').doc(RECIBO.id).update({forma:e.target.value}).catch(()=>toast('Sem permissão para salvar'));RECIBO.draw()}

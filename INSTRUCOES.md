@@ -37,6 +37,7 @@ Arquivos da versão do GitHub:
 - **Recibos**: lista de todos os pagamentos feitos, com filtro por mês de referência.
   - O recibo traz o logo, número, valor por extenso, dados do locatário, do imóvel e do locador, vencimento, data e forma de pagamento (Pix, Dinheiro, Transferência, Cartão, Boleto).
   - A **data** e a **forma de pagamento** podem ser alteradas no próprio recibo (salvam na hora).
+  - **Assinatura digital**: em Pessoas → Locadores → editar, envie a assinatura do locador em **PNG** (de preferência com fundo transparente). O app recorta as bordas, reduz o tamanho (cabe numa célula da planilha) e a assinatura sai sobre a linha do locador em todos os recibos, na tela, no PDF e na impressão. **Remover** apaga. Fotografia de assinatura em papel branco também funciona: o fundo branco é removido.
   - **Duas vias iguais**: o PDF e a impressão saem com **1ª via** (locador) e **2ª via** (locatário) idênticas na mesma folha A4, separadas por uma linha tracejada de corte. Na tela aparece uma via só.
   - Botões: **Baixar PDF** (arquivo A4 com as duas vias e logo, gerado no próprio aparelho e nomeado `Recibo-REC-AAAAMM-XXXX-Nome.pdf`), **Imprimir** (na versão do GitHub), **Copiar texto** e **WhatsApp** (abre a conversa com o telefone do locatário e o texto pronto).
   - O número do recibo segue o padrão `REC-AAAAMM-XXXX` (mês de referência e início do número do contrato).
@@ -50,7 +51,7 @@ Relações: **Contrato** liga um Imóvel, um Locador e um Locatário. **Pagament
 | Tabela | Campos |
 |---|---|
 | Imóveis | código, endereço, bairro, tipo, valor do aluguel, situação, link da foto |
-| Locadores | nome, CPF/CNPJ, chave Pix |
+| Locadores | nome, CPF/CNPJ, chave Pix, assinatura (imagem PNG) |
 | Locatários | nome, CPF, telefone, e-mail, profissão |
 | Contratos | número, imóvel, locador, locatário, início, término, valor mensal, situação (Ativo/Encerrado), link do PDF |
 | Pagamentos | contrato, mês de referência (AAAA-MM), valor, vencimento, data do pagamento, forma de pagamento |

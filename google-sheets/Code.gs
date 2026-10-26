@@ -18,7 +18,7 @@ const TOKEN = 'TROQUE-ESTE-CODIGO';
 // [chave no app, nome da coluna na planilha, tipo: t=texto, n=numero, d=data AAAA-MM-DD]
 const SCHEMA = {
   imoveis:    {tab: 'db_Imoveis',    cols: [['id','Id','t'],['codigo','Codigo','t'],['endereco','Endereco','t'],['bairro','Bairro','t'],['tipo','Tipo','t'],['aluguel','Valor_Aluguel','n'],['status','Status','t'],['foto','Foto_Link','t']]},
-  locadores:  {tab: 'db_Locadores',  cols: [['id','Id','t'],['nome','Nome','t'],['doc','CPF_CNPJ','t'],['pix','Chave_Pix','t']]},
+  locadores:  {tab: 'db_Locadores',  cols: [['id','Id','t'],['nome','Nome','t'],['doc','CPF_CNPJ','t'],['pix','Chave_Pix','t'],['assinatura','Assinatura','t']]},
   locatarios: {tab: 'db_Locatarios', cols: [['id','Id','t'],['nome','Nome','t'],['cpf','CPF','t'],['telefone','Telefone','t'],['email','Email','t'],['profissao','Profissao','t']]},
   contratos:  {tab: 'db_Contratos',  cols: [['id','Id','t'],['numero','Numero','t'],['imovelId','Id_Imovel','t'],['locadorId','Id_Locador','t'],['locatarioId','Id_Locatario','t'],['entrada','Data_Entrada','d'],['saida','Data_Saida','d'],['valor','Valor_Mensal','n'],['status','Status','t'],['pdf','Contrato_Link','t']]},
   pagamentos: {tab: 'db_Pagamentos', cols: [['id','Id','t'],['contratoId','Id_Contrato','t'],['referencia','Referencia','t'],['valor','Valor','n'],['vencimento','Vencimento','d'],['dataPagamento','Data_Pagamento','d'],['forma','Forma_Pagamento','t']]}
