@@ -374,6 +374,8 @@ const daysTo=s=>Math.round((new Date(s+'T00:00:00')-new Date(today()+'T00:00:00'
 const imLabel=i=>i?`${i.codigo||'s/n'} · ${i.endereco||''}`:'—';
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function pagStatus(p){if(p.dataPagamento)return['Pago','ok'];if(p.vencimento<today())return['Atrasado','bad'];return['Pendente','warn']}
+const diasAtraso=p=>p.dataPagamento||!p.vencimento?0:Math.max(0,-daysTo(p.vencimento));
+const atrasoTxt=p=>{const d=diasAtraso(p);return d?d+(d===1?' dia':' dias')+' em atraso':''};
 function contratoAtivo(imovelId){return D.contratos.find(c=>c.imovelId===imovelId&&c.status==='Ativo')}
 
 /* ---------- esquemas de formulário ---------- */
@@ -469,10 +471,10 @@ function vPainel(){
     <div class="kpi"><div class="l">Imóveis alugados</div><div class="v">${alugados} / ${D.imoveis.length}</div><div class="n">${livres.length} disponível(is)</div></div>
     <div class="kpi"><div class="l">Receita mensal contratada</div><div class="v">${brl(receita)}</div><div class="n">${ativos.length} contrato(s) ativo(s)</div></div>
     <div class="kpi"><div class="l">Recebido em ${mesLabel(mes).split(' ')[0]}</div><div class="v">${brl(recebido)}</div><div class="n">${doMes.length?doMes.filter(p=>p.dataPagamento).length+' de '+doMes.length+' cobranças':'Nenhuma cobrança gerada'}</div></div>
-    <div class="kpi ${atrasados.length?'bad':''}"><div class="l">Em atraso</div><div class="v">${brl(atrasoTotal)}</div><div class="n">${atrasados.length} cobrança(s)</div></div>
+    <div class="kpi ${atrasados.length?'bad':''}"><div class="l">Em atraso</div><div class="v">${brl(atrasoTotal)}</div><div class="n">${atrasados.length} cobrança(s)${atrasados.length?' · maior atraso: '+Math.max(...atrasados.map(diasAtraso))+' dia(s)':''}</div></div>
   </div>
   <div class="grid2">
-    <section class="panel"><h2>Cobranças em aberto</h2><div class="list">${abertos.length?abertos.map(p=>{const[s,k]=pagStatus(p);return `<div class="row"><div class="t"><b>${esc(pn(p))}</b><span>vence ${dt(p.vencimento)} · ${mesLabel(p.referencia)}</span></div><div style="text-align:right"><div class="mono">${brl(p.valor)}</div>${chip(s,k)}</div></div>`}).join(''):empty('Tudo em dia','Gere as cobranças do mês na aba Pagamentos.')}</div></section>
+    <section class="panel"><h2>Cobranças em aberto</h2><div class="list">${abertos.length?abertos.map(p=>{const[s,k]=pagStatus(p);return `<div class="row"><div class="t"><b>${esc(pn(p))}</b><span>vence ${dt(p.vencimento)} · ${mesLabel(p.referencia)}</span></div><div style="text-align:right"><div class="mono">${brl(p.valor)}</div>${chip(s,k)}${diasAtraso(p)?`<div class="sub" style="color:var(--bad);font-weight:600">${atrasoTxt(p)}</div>`:''}</div></div>`}).join(''):empty('Tudo em dia','Gere as cobranças do mês na aba Pagamentos.')}</div></section>
     <section class="panel"><h2>Contratos terminando em até 6 meses</h2><div class="list">${vencendo.length?vencendo.map(({c,d})=>`<div class="row"><div class="t"><b>${esc(by('locatarios',c.locatarioId)?.nome||'—')}</b><span>${esc(imLabel(by('imoveis',c.imovelId)))}</span></div><div style="text-align:right"><div class="mono">${dt(c.saida)}</div>${chip(d<0?'Vencido':d+' dias',d<60?'warn':'')}</div></div>`).join(''):empty('Nenhum vencimento próximo','Os contratos ativos terminam depois de 6 meses.')}</div></section>
     <section class="panel"><h2>Imóveis disponíveis</h2><div class="list">${livres.length?livres.map(i=>`<div class="row"><div class="t"><b>${esc(imLabel(i))}</b><span>${esc(i.bairro||'')}</span></div><div class="mono">${brl(i.aluguel)}</div></div>`).join(''):empty('Nenhum imóvel vago','Todos os imóveis estão alugados.')}</div></section>
   </div>`;
@@ -522,7 +524,7 @@ function vPagamentos(){
   list.sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
   const rows=list.map(p=>{const c=by('contratos',p.contratoId),[s,k]=pagStatus(p);
     return `<tr data-edit="pagamentos:${p.id}" tabindex="0"><td><b>${esc(by('locatarios',c?.locatarioId)?.nome||'—')}</b><div class="sub">${esc(imLabel(by('imoveis',c?.imovelId)))}</div></td>
-    <td>${esc(mesLabel(p.referencia))}</td><td class="mono">${dt(p.vencimento)}</td><td class="num mono">${brl(p.valor)}</td><td>${chip(s,k)}${p.dataPagamento?`<div class="sub mono">${dt(p.dataPagamento)}</div>`:''}</td>
+    <td>${esc(mesLabel(p.referencia))}</td><td class="mono">${dt(p.vencimento)}</td><td class="num mono">${brl(p.valor)}</td><td>${chip(s,k)}${p.dataPagamento?`<div class="sub mono">${dt(p.dataPagamento)}</div>`:''}${diasAtraso(p)?`<div class="sub" style="color:var(--bad);font-weight:600">${atrasoTxt(p)}</div>`:''}</td>
     <td><div class="bar"><button class="btn sm ${p.dataPagamento?'ghost':''}" data-pay="${p.id}">${p.dataPagamento?'Desfazer':'Registrar pagamento'}</button>${p.dataPagamento?`<button class="btn sm" data-rec="${p.id}">Recibo</button>`:''}</div></td></tr>`}).join('');
   const tot=list.reduce((s,p)=>s+(+p.valor||0),0);
   return `<header class="top"><div><h1>Pagamentos</h1><p class="sub">${list.length} cobrança(s) · ${brl(tot)}</p></div><div class="bar">${modoBar()}<button class="btn ghost" data-new="pagamentos">Lançamento avulso</button><button class="btn" data-gen>Gerar cobranças do mês</button></div></header>
@@ -562,7 +564,7 @@ function vCalendario(){
   const c=by('contratos',calContrato), meses=mesesDoContrato(c), hoje=ym(new Date());
   const pg=mes=>D.pagamentos.find(p=>p.contratoId===c.id&&p.referencia===mes);
   const cel=mes=>{const p=pg(mes);let k='idle',t='Sem cobrança';
-    if(p){[t,k]=pagStatus(p)}else if(mes>hoje)t='Futuro';
+    if(p){[t,k]=pagStatus(p);if(t==='Atrasado')t+=' · '+diasAtraso(p)+(diasAtraso(p)===1?' dia':' dias')}else if(mes>hoje)t='Futuro';
     return {p,k,t}};
   const feitos=meses.filter(m=>pg(m)?.dataPagamento).length;
   let anos='';
