@@ -362,7 +362,7 @@ const COLS=['imoveis','locadores','locatarios','contratos','pagamentos'];
 const D={imoveis:[],locadores:[],locatarios:[],contratos:[],pagamentos:[]};
 const loaded={};
 let db=null, assets=null, view='painel', pessoasTab='locatarios', pagMes=ym(new Date()), pagFiltro='todos', pagModo='lista', calContrato='', calMes=ym(new Date()), recMes='todos';
-const VIEWS=[['painel','Painel'],['imoveis','Imóveis'],['contratos','Contratos'],['pessoas','Pessoas'],['pagamentos','Pagamentos'],['recibos','Recibos']];
+const VIEWS=[['painel','Painel de Controlo'],['imoveis','Imóveis'],['contratos','Contratos'],['pessoas','Pessoas'],['pagamentos','Pagamentos'],['recibos','Recibos']];
 
 /* ---------- utilidades ---------- */
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -470,7 +470,7 @@ function vPainel(){
   const vencendo=ativos.filter(c=>c.saida).map(c=>({c,d:daysTo(c.saida)})).filter(x=>x.d<=180).sort((a,b)=>a.d-b.d);
   const abertos=D.pagamentos.filter(p=>!p.dataPagamento).sort((a,b)=>a.vencimento.localeCompare(b.vencimento)).slice(0,6);
   const pn=p=>by('locatarios',by('contratos',p.contratoId)?.locatarioId)?.nome||'Contrato removido';
-  return `<header class="top"><div><h1>Painel</h1><p class="sub">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p></div></header>
+  return `<header class="top"><div><h1>Painel de Controlo</h1><p class="sub">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p></div></header>
   <div class="kpis">
     <div class="kpi"><div class="l">Imóveis alugados</div><div class="v">${alugados} / ${D.imoveis.length}</div><div class="n">${livres.length} disponível(is)</div></div>
     <div class="kpi"><div class="l">Receita mensal contratada</div><div class="v">${brl(receita)}</div><div class="n">${ativos.length} contrato(s) ativo(s)</div></div>

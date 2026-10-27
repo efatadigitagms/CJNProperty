@@ -27,7 +27,7 @@ Arquivos da versão do GitHub:
 
 ## 2. Telas do aplicativo
 
-- **Painel**: imóveis alugados, receita mensal contratada, recebido no mês, valor em atraso, cobranças em aberto, contratos que terminam em até 6 meses e imóveis disponíveis.
+- **Painel de Controlo**: imóveis alugados, receita mensal contratada, recebido no mês, valor em atraso, cobranças em aberto, contratos que terminam em até 6 meses e imóveis disponíveis.
 - **Imóveis**: cartões com foto, endereço, bairro, valor, situação (Alugado, Disponível, Em manutenção) e locatário atual.
 - **Contratos**: locatário, imóvel, locador, vigência, valor mensal e situação. Avisa quando faltam 90 dias ou menos para o término.
 - **Pessoas**: locatários (CPF, telefone, e-mail, profissão) e locadores (CPF/CNPJ, chave Pix).
@@ -37,7 +37,7 @@ Arquivos da versão do GitHub:
 - **Recibos**: lista de todos os pagamentos feitos, com filtro por mês de referência.
   - O recibo traz o logo, número, valor por extenso, dados do locatário, do imóvel e do locador, vencimento, data e forma de pagamento (Pix, Dinheiro, Transferência, Cartão, Boleto).
   - A **data** e a **forma de pagamento** podem ser alteradas no próprio recibo (salvam na hora).
-- **Dias em atraso**: cobranças vencidas e não pagas mostram **"N dias em atraso"** (contados a partir do dia seguinte ao vencimento) em Pagamentos, no Painel (lista de cobranças em aberto e o cartão **Em atraso**, que traz o maior atraso) e no calendário do contrato. O número se atualiza sozinho a cada dia e some quando o pagamento é registrado.
+- **Dias em atraso**: cobranças vencidas e não pagas mostram **"N dias em atraso"** (contados a partir do dia seguinte ao vencimento) em Pagamentos, no Painel de Controlo (lista de cobranças em aberto e o cartão **Em atraso**, que traz o maior atraso) e no calendário do contrato. O número se atualiza sozinho a cada dia e some quando o pagamento é registrado.
   - **Assinatura digital**: em Pessoas → Locadores → editar, envie a assinatura do locador em **PNG** (de preferência com fundo transparente). O app recorta as bordas, reduz o tamanho (cabe numa célula da planilha) e a assinatura sai sobre a linha do locador em todos os recibos, na tela, no PDF e na impressão. **Remover** apaga. Fotografia de assinatura em papel branco também funciona: o fundo branco é removido.
   - **Vias do recibo**: no recibo, o campo **Vias do recibo** escolhe o que sai no **PDF** e na **impressão**: **2 vias** (locador e locatário na mesma folha A4, com linha de corte), **só a via do locador** ou **só a via do locatário**. O rodapé de cada via diz "Via do locador" ou "Via do locatário" e o nome do arquivo termina em `-2-vias`, `-via-locador` ou `-via-locatario`. Na tela aparece uma via só. O app lembra a última escolha neste aparelho. Sugestão: 2 vias na folha, para o locador guardar uma e entregar a outra.
   - Botões: **Baixar PDF** (arquivo A4 com as duas vias e logo, gerado no próprio aparelho e nomeado `Recibo-REC-AAAAMM-XXXX-Nome.pdf`), **Imprimir** (na versão do GitHub), **Copiar texto** e **WhatsApp** (abre a conversa com o telefone do locatário e o texto pronto).
@@ -127,7 +127,7 @@ Faça o passo 6 em cada aparelho que for usar.
 1. Início do mês: **Pagamentos → Gerar cobranças do mês**.
 2. Quando o locatário pagar: **Registrar pagamento** (ou toque no mês no *Calendário*). Informe a **data do pagamento** e a **forma de pagamento**; o recibo abre em seguida.
 3. Envie o recibo: **Baixar PDF** (e anexe no WhatsApp ou e-mail), **WhatsApp** (texto), **Copiar texto** ou **Imprimir**.
-4. Acompanhe atrasos no **Painel** e no filtro *Atrasado* de Pagamentos.
+4. Acompanhe atrasos no **Painel de Controlo** e no filtro *Atrasado* de Pagamentos.
 5. Confira em **Contratos** quais terminam em breve.
 6. De vez em quando, use **Exportar backup** (arquivo `.json`). **Importar backup** restaura.
 
