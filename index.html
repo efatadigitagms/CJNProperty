@@ -132,6 +132,10 @@ label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute
 .recibo .ass .sig{height:56px;max-width:240px;object-fit:contain;margin:-40px 0 -16px;position:relative;z-index:1}
 .sigbox{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.sigbox .pv{min-width:160px;height:64px;border:1px dashed var(--line);border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5d6a82}.sigbox .pv img{max-height:60px;max-width:220px}
 .recibo.via2{display:none}
+.rwrap[data-vias=lt] .recibo:not(.via2){display:none!important}
+.rwrap[data-vias=lt] .recibo.via2{display:block!important;margin-top:0!important}
+.rwrap[data-vias=lt] .recibo.via2::before{display:none}
+.rwrap[data-vias=loc] .recibo.via2{display:none!important}
 .recibo footer{margin-top:28px;font-size:11px;color:#5d6a82;text-align:center}
 .rwrap .racts{display:flex;gap:8px;flex-wrap:wrap;align-items:end;justify-content:space-between;background:var(--surface);padding:12px;border-radius:8px;border:1px solid var(--line)}
 .rwrap .racts .bar{align-items:end}
@@ -676,7 +680,8 @@ function openPagar(id){
 }
 
 /* ---------- PDF do recibo (gerado no próprio aparelho, sem bibliotecas) ---------- */
-async function reciboPdf(p){
+async function reciboPdf(p,vias){
+  vias=vias||RECVIAS;
   const {im,lt,ld,num}=reciboInfo(p),v=+p.valor||0;
   const img=new Image();img.src=LOGO;await img.decode();
   const iw=img.naturalWidth,ih=img.naturalHeight,cv=document.createElement('canvas');cv.width=iw;cv.height=ih;
@@ -724,9 +729,10 @@ async function reciboPdf(p){
     if(sub)text(W/2,y+26,sub,'F1',8.5,GRAY,'c');
     text(W/2,t0+H/2-18,'CJNProperty - emitido em '+dt(today())+' - '+lbl,'F1',7.5,GRAY,'c');
   };
-  via(0,'1ª via');
+  if(vias==='lt')via(0,'Via do locatário');else via(0,'Via do locador');
+  if(vias==='2'){
   c+=`0.6 w [4 3] 0 d ${col(.6,.62,.68)} RG ${M2} ${n2(H/2)} m ${n2(W-M2)} ${n2(H/2)} l S [] 0 d\n`;
-  via(H/2+6,'2ª via');
+  via(H/2+6,'Via do locatário');}
   const o=[];
   o[1]='<< /Type /Catalog /Pages 2 0 R >>';
   o[2]='<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
@@ -746,14 +752,17 @@ async function reciboPdf(p){
 async function baixarPdf(p){
   try{
     const bytes=await reciboPdf(p),{lt,num}=reciboInfo(p);
-    const nome=('Recibo-'+num+'-'+(lt?.nome||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-')).replace(/-+$/,'')+'.pdf';
+    const nome=('Recibo-'+num+'-'+(lt?.nome||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-')).replace(/-+$/,'')+viasNome(RECVIAS)+'.pdf';
     const blob=new Blob([bytes],{type:'application/pdf'});
     if(!window.CJN&&window.claude){try{const d=await claude.use('downloads');if(d){await d.save({filename:nome,data:blob});toast('PDF salvo');return}}catch(e){if(e&&e.code==='declined')return}}
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('PDF gerado');
   }catch(e){toast('Não foi possível gerar o PDF')}
 }
-let RECIBO=null;
+let RECIBO=null,RECVIAS='2';
+try{const sv=localStorage.getItem('cjn_vias');if(sv==='loc'||sv==='lt'||sv==='2')RECVIAS=sv}catch(e){}
+const setVias=v=>{RECVIAS=v;try{localStorage.setItem('cjn_vias',v)}catch(e){}};
+const viasNome=v=>v==='loc'?'-via-locador':v==='lt'?'-via-locatario':'-2-vias';
 function openRecibo(id,over){
   const base=by('pagamentos',id);if(!base)return;
   RECIBO={id,p:{...base,...(over||{})}};
@@ -768,8 +777,8 @@ function openRecibo(id,over){
       <p>Dou plena e geral quitação do valor acima.</p>
       <div class="ass">${ld?.assinatura?`<img class="sig" src="${esc(ld.assinatura)}" alt="Assinatura">`:''}<div class="ln"></div><b>${esc(ld?.nome||'Locador')}</b><span>${ld?.doc?'CPF/CNPJ '+esc(cpf(ld.doc)):''}${ld?.pix?' · Pix: '+esc(ld.pix):''}</span></div>
       <footer>CJNProperty · emitido em ${dt(today())} · ${lbl}</footer></article>`;
-    layer.innerHTML=`<div class="modal"><div class="rwrap">${art('1ª via')}${art('2ª via',1)}
-      <div class="racts noprint"><p class="sub" style="width:100%;margin:0 0 4px">No PDF e na impressão saem 2 vias iguais na mesma folha.</p><div class="bar"><label>Data do pagamento<input id="recData" type="date" value="${esc(p.dataPagamento||'')}"></label><label>Forma de pagamento<select id="recForma">${['','Pix','Dinheiro','Transferência','Cartão','Boleto'].map(o=>`<option ${o===(p.forma||'')?'selected':''}>${o}</option>`).join('')}</select></label></div>
+    layer.innerHTML=`<div class="modal"><div class="rwrap" data-vias="${RECVIAS}">${art('Via do locador')}${art('Via do locatário',1)}
+      <div class="racts noprint"><p class="sub" style="width:100%;margin:0 0 4px">Escolha quais vias saem no PDF e na impressão. As vias são idênticas, só muda o rodapé.</p><div class="bar"><label>Vias do recibo<select id="recVias"><option value="2" ${RECVIAS==='2'?'selected':''}>2 vias (locador + locatário)</option><option value="loc" ${RECVIAS==='loc'?'selected':''}>Só a via do locador</option><option value="lt" ${RECVIAS==='lt'?'selected':''}>Só a via do locatário</option></select></label><label>Data do pagamento<input id="recData" type="date" value="${esc(p.dataPagamento||'')}"></label><label>Forma de pagamento<select id="recForma">${['','Pix','Dinheiro','Transferência','Cartão','Boleto'].map(o=>`<option ${o===(p.forma||'')?'selected':''}>${o}</option>`).join('')}</select></label></div>
       <div class="bar"><button class="btn" data-recact="pdf">Baixar PDF</button>${window.CJN?'<button class="btn ghost" data-recact="print">Imprimir</button>':''}<button class="btn ghost" data-recact="copy">Copiar texto</button>${wa?`<a class="btn ghost" href="https://wa.me/${wa}?text=${encodeURIComponent(reciboTexto(p))}" target="_blank" rel="noopener">WhatsApp</a>`:''}<button class="btn ghost" data-recact="close">Fechar</button></div></div></div></div>`;
     layer.querySelector('.modal').addEventListener('mousedown',e=>{if(e.target.classList.contains('modal'))layer.innerHTML=''});
   };
@@ -815,6 +824,7 @@ document.addEventListener('click',async e=>{
 });
 document.addEventListener('change',e=>{if(e.target.id==='selMes'){pagMes=e.target.value;render()}
   if(e.target.id==='sigFile'){sigLoad(e.target)}
+  if(e.target.id==='recVias'&&RECIBO){setVias(e.target.value);RECIBO.draw()}
   if(e.target.id==='selRec'){recMes=e.target.value;render()}
   if(e.target.id==='recData'&&RECIBO){const v=e.target.value;if(!v){toast('Informe a data do pagamento');RECIBO.draw();return}RECIBO.p.dataPagamento=v;db.collection('pagamentos').doc(RECIBO.id).update({dataPagamento:v}).catch(()=>toast('Sem permissão para salvar'));RECIBO.draw()}
   if(e.target.id==='recForma'&&RECIBO){RECIBO.p.forma=e.target.value;db.collection('pagamentos').doc(RECIBO.id).update({forma:e.target.value}).catch(()=>toast('Sem permissão para salvar'));RECIBO.draw()}
