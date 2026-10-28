@@ -453,6 +453,12 @@ const dt=s=>s?s.split('-').reverse().join('/'):'—';
 const mesLabel=m=>{if(!m)return '—';const [y,mo]=m.split('-');return new Date(y,mo-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'})};
 const by=(col,id)=>D[col].find(x=>x.id===id);
 const cpf=s=>{s=String(s||'').replace(/\D/g,'');return s.length===11?s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):s};
+const tempoTxt=(ini,fim)=>{if(!ini)return '';const a=new Date(ini+'T00:00:00'),b=new Date((fim||today())+'T00:00:00');if(isNaN(a)||b<a)return '';
+  let m=(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth();if(b.getDate()<a.getDate())m--;if(m<1)return 'menos de 1 mês';
+  const y=Math.floor(m/12),r=m%12,ys=y?y+(y>1?' anos':' ano'):'',ms=r?r+(r>1?' meses':' mês'):'';return ys&&ms?ys+' e '+ms:ys||ms};
+const contratoTempo=c=>{if(!c)return '';const fim=c.status==='Ativo'?today():(c.saida&&c.saida<today()?c.saida:today());return tempoTxt(c.entrada,fim)};
+const tempoLoc=id=>{const cs=D.contratos.filter(c=>c.locatarioId===id&&c.entrada);if(!cs.length)return '';const at=cs.filter(c=>c.status==='Ativo').sort((a,b)=>a.entrada.localeCompare(b.entrada))[0];
+  if(at)return contratoTempo(at);const u=cs.sort((a,b)=>(b.saida||b.entrada).localeCompare(a.saida||a.entrada))[0];return contratoTempo(u)+' (encerrado)'};
 const daysTo=s=>Math.round((new Date(s+'T00:00:00')-new Date(today()+'T00:00:00'))/864e5);
 const imLabel=i=>i?`${i.codigo||'s/n'} · ${i.endereco||''}`:'—';
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
@@ -570,7 +576,7 @@ function vImoveis(){
     return `<article class="card" tabindex="0" data-edit="imoveis:${i.id}">
       <div class="ph">${i.foto?`<img src="${esc(imgSrc(i.foto))}" alt="Foto do imóvel ${esc(i.codigo)}">`:esc(i.codigo||'—')}</div>
       <div class="bd"><div class="a">${esc(i.endereco)}</div><div class="m">${esc(i.bairro||'')}${i.tipo?' · '+esc(i.tipo):''}</div>
-      <div class="m">${loc?'Locatário: '+esc(loc.nome):'Sem contrato ativo'}</div>
+      <div class="m">${loc?'Locatário: '+esc(loc.nome):'Sem contrato ativo'}</div>${loc&&c.entrada?'<div class="m">No imóvel há '+esc(contratoTempo(c))+'</div>':''}
       <div class="ft"><span class="mono">${brl(i.aluguel)}</span>${chip(i.status||'Sem status',k)}</div></div></article>`}).join('');
   return `<header class="top"><div><h1>Imóveis</h1><p class="sub">${D.imoveis.length} cadastrado(s)</p></div><button class="btn" data-new="imoveis">Novo imóvel</button></header>
   ${cards?`<div class="cards">${cards}</div>`:empty('Nenhum imóvel cadastrado','Use “Novo imóvel” para cadastrar o primeiro.')}`;
@@ -580,7 +586,7 @@ function vContratos(){
   const rows=[...D.contratos].sort((a,b)=>(a.status==='Ativo'?0:1)-(b.status==='Ativo'?0:1)||(a.saida||'').localeCompare(b.saida||'')).map(c=>{
     const d=c.saida?daysTo(c.saida):null;
     return `<tr data-edit="contratos:${c.id}" tabindex="0"><td><b>${esc(by('locatarios',c.locatarioId)?.nome||'—')}</b><div class="sub">${esc(imLabel(by('imoveis',c.imovelId)))}</div></td>
-    <td>${esc(by('locadores',c.locadorId)?.nome||'—')}</td><td class="mono">${dt(c.entrada)} → ${dt(c.saida)}${d!==null&&c.status==='Ativo'&&d<=90?' '+chip(d<0?'Vencido':d+' dias','warn'):''}</td>
+    <td>${esc(by('locadores',c.locadorId)?.nome||'—')}</td><td class="mono">${dt(c.entrada)} → ${dt(c.saida)}${d!==null&&c.status==='Ativo'&&d<=90?' '+chip(d<0?'Vencido':d+' dias','warn'):''}<div class="sub">No imóvel há ${esc(contratoTempo(c)||'—')}</div></td>
     <td class="num mono">${brl(c.valor)}</td><td>${chip(c.status,c.status==='Ativo'?'ok':'')}</td>
     <td>${c.pdf?`<a class="link" href="${esc(c.pdf)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">PDF</a>`:''}</td></tr>`}).join('');
   return `<header class="top"><div><h1>Contratos</h1><p class="sub">${D.contratos.filter(c=>c.status==='Ativo').length} ativo(s)</p></div><button class="btn" data-new="contratos">Novo contrato</button></header>
@@ -589,9 +595,9 @@ function vContratos(){
 
 function vPessoas(){
   const loc=pessoasTab==='locatarios';
-  const rows=loc?D.locatarios.map(p=>`<tr data-edit="locatarios:${p.id}" tabindex="0"><td><b>${esc(p.nome)}</b></td><td class="mono">${esc(cpf(p.cpf))}</td><td class="mono">${esc(p.telefone||'—')}</td><td>${esc(p.email||'—')}</td><td>${esc(p.profissao||'—')}</td></tr>`).join('')
+  const rows=loc?D.locatarios.map(p=>`<tr data-edit="locatarios:${p.id}" tabindex="0"><td><b>${esc(p.nome)}</b></td><td class="mono">${esc(cpf(p.cpf))}</td><td class="mono">${esc(p.telefone||'—')}</td><td>${esc(p.email||'—')}</td><td>${esc(p.profissao||'—')}</td><td>${esc(tempoLoc(p.id)||'—')}</td></tr>`).join('')
    :D.locadores.map(p=>`<tr data-edit="locadores:${p.id}" tabindex="0"><td><b>${esc(p.nome)}</b></td><td class="mono">${esc(cpf(p.doc))}</td><td class="mono">${esc(p.pix||'—')}</td></tr>`).join('');
-  const head=loc?'<th>Nome</th><th>CPF</th><th>Telefone</th><th>E-mail</th><th>Profissão</th>':'<th>Nome</th><th>CPF / CNPJ</th><th>Chave Pix</th>';
+  const head=loc?'<th>Nome</th><th>CPF</th><th>Telefone</th><th>E-mail</th><th>Profissão</th><th>Tempo no imóvel</th>':'<th>Nome</th><th>CPF / CNPJ</th><th>Chave Pix</th>';
   return `<header class="top"><div><h1>Pessoas</h1><p class="sub">Locatários e locadores</p></div><div class="bar">
     <div class="seg"><button data-tab="locatarios" aria-pressed="${loc}">Locatários</button><button data-tab="locadores" aria-pressed="${!loc}">Locadores</button></div>
     <button class="btn" data-new="${pessoasTab}">${loc?'Novo locatário':'Novo locador'}</button></div></header>
