@@ -229,7 +229,26 @@ window.CJN=true;
     async add(d){const id=rnd();await docRef(c,id).set(d);return docRef(c,id)},
     onSnapshot(next){const f=s=>next(s);subs[c].add(f);ready.then(()=>f(snap(c)));return()=>subs[c].delete(f)}});
   const dbApi={collection:colRef,doc:p=>{const[c,id]=p.split('/');return docRef(c,id)}};
-  window.claude={use:async n=>n==='db'?(await ready,dbApi):null};
+  /* Envio de arquivos: a planilha guarda no máximo ~50 mil caracteres por célula, então a foto é reduzida (JPEG) até caber. */
+  const MAXC=46000;
+  const readDU=f=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>no(new Error('Não foi possível ler o arquivo'));r.readAsDataURL(f)});
+  const loadImg=u=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error('Imagem inválida'));i.src=u});
+  const assetsApi={async upload(f){
+    if(/^image\//.test(f.type)){
+      const img=await loadImg(await readDU(f));
+      for(const mx of [720,600,480,400,320,260,200]){
+        const k=Math.min(1,mx/Math.max(img.width,img.height)),c=document.createElement('canvas');
+        c.width=Math.max(1,Math.round(img.width*k));c.height=Math.max(1,Math.round(img.height*k));
+        const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
+        for(const q of [.78,.66,.55,.45,.35]){const u=c.toDataURL('image/jpeg',q);if(u.length<=MAXC)return {url:u}}
+      }
+      throw new Error('Não foi possível reduzir a foto o bastante');
+    }
+    const u=await readDU(f);
+    if(u.length<=MAXC)return {url:u};
+    throw new Error('PDF grande demais para a planilha (máx. ~30 KB). Use um PDF menor ou o app do Claude.');
+  }};
+  window.claude={use:async n=>n==='db'?(await ready,dbApi):n==='assets'?assetsApi:null};
 
 
   /* ---------- login com usuário e senha (verificado no Apps Script) ---------- */
@@ -499,7 +518,7 @@ function openForm(col,id,preset){
     const out={...cur};delete out.id;
     for(const [k,,t] of S.campos){
       const el=layer.querySelector('#f_'+k); if(!el)continue;
-      if(t==='file'){if(el.type!=='file'){out[k]=el.value.trim();continue}const f=el.files[0]; if(f){try{const r=await assets.upload(f);out[k]=r.url}catch(err){toast('Falha ao enviar arquivo');return}} }
+      if(t==='file'){if(el.type!=='file'){out[k]=el.value.trim();continue}const f=el.files[0]; if(f){try{const r=await assets.upload(f);out[k]=r.url}catch(err){toast((err&&err.message)||'Falha ao enviar arquivo');return}} }
       else if(t==='number')out[k]=el.value===''?0:parseFloat(el.value);
       else out[k]=el.value.trim();
     }
