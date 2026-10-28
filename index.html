@@ -214,7 +214,8 @@ window.CJN=true;
     pending:queue.length+' alteração(ões) para enviar',offline:'Sem conexão. Envio depois.',error:'Erro: '+errMsg})[state]||'';
   function setState(s){state=s||(!cfg?'local':queue.length?'pending':'ok');
     const el=document.querySelector('.foot .fst');if(el){el.textContent=stText();el.classList.toggle('bad',state==='error')}}
-  const fail=e=>{errMsg=e.message||String(e);setState(navigator.onLine?'error':'offline')};
+  const fail=e=>{errMsg=e.message||String(e);setState(navigator.onLine?'error':'offline');
+    if(cfg&&cfg.clientId&&/não tem acesso|Login inválido|Entre com a conta/.test(errMsg)){sess=null;lsSet(SK,null);gateShow(errMsg)}};
 
   const snap=c=>({docs:[...mem[c]].map(([id,d])=>({id,exists:true,data:()=>d})),size:mem[c].size,empty:!mem[c].size});
   const notify=c=>subs[c].forEach(f=>f(snap(c)));
@@ -237,12 +238,72 @@ window.CJN=true;
   const dbApi={collection:colRef,doc:p=>{const[c,id]=p.split('/');return docRef(c,id)}};
   window.claude={use:async n=>n==='db'?(await ready,dbApi):null};
 
+
+  /* ---------- login com a conta Google (Google Identity Services) ---------- */
+  const SK='cjn_sess',GK='cjn_gate';
+  const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+  const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
+  let sess=null,gsiP=null,gateEl=null,credWait=null;
+  try{sess=JSON.parse(lsGet(SK)||'null')}catch(e){sess=null}
+  const gateOn=()=>lsGet(GK)||'';
+  const validSess=()=>!!(sess&&sess.idToken&&sess.exp*1000>Date.now()+30000);
+  const jwt=t=>{try{let b=String(t).split('.')[1].replace(/-/g,'+').replace(/_/g,'/');b+='='.repeat((4-b.length%4)%4);return JSON.parse(decodeURIComponent(escape(atob(b))))}catch(e){return null}};
+  const loadGsi=()=>gsiP||(gsiP=new Promise((res,rej)=>{
+    if(window.google&&google.accounts&&google.accounts.id)return res();
+    const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.async=true;
+    sc.onload=()=>res();sc.onerror=()=>{gsiP=null;rej(new Error('Não foi possível carregar o login do Google. Verifique a conexão.'))};
+    document.head.appendChild(sc)}));
+  const initGsi=cid=>google.accounts.id.initialize({client_id:cid,callback:onCred,auto_select:true,cancel_on_tap_outside:false,use_fedcm_for_prompt:true});
+  const waitCred=ms=>new Promise((res,rej)=>{const t=setTimeout(()=>{credWait=null;rej(new Error('Login não concluído'))},ms);credWait=s=>{clearTimeout(t);credWait=null;res(s)}});
+  function onCred(resp){
+    const p=jwt(resp&&resp.credential);if(!p||!p.exp)return;
+    sess={idToken:resp.credential,email:p.email||'',name:p.name||p.email||'',exp:p.exp,at:Date.now()};
+    lsSet(SK,JSON.stringify(sess));
+    if(credWait)credWait(sess);
+    if(gateEl)Promise.resolve(ready).then(()=>{
+      if(!cfg){gateHide();return}
+      return call({action:'ping'}).then(()=>{gateHide();redraw();setState();syncNow()})
+        .catch(e=>{sess=null;lsSet(SK,null);gateShow(e.message)});
+    });
+  }
+  const redraw=()=>{try{render()}catch(e){}};
+  function gateHide(){if(gateEl){gateEl.remove();gateEl=null}}
+  function gateShow(msg){
+    gateHide();
+    const d=document.createElement('div');d.id='gate';
+    d.style.cssText='position:fixed;inset:0;z-index:2000;background:var(--bg,#f4f6fa);color:var(--ink,#101a2e);display:grid;place-items:center;padding:24px;font:14px/1.5 var(--f-body,system-ui,sans-serif)';
+    d.innerHTML='<div style="max-width:380px;width:100%;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center"><img src="icon-192.png" alt="" width="72" height="72" style="border-radius:16px"><h1 style="margin:0;font:700 26px var(--f-display,system-ui)">CJNProperty</h1><p style="margin:0;color:var(--muted,#5d6a82)">Entre com a conta Google autorizada para acessar os dados.</p><div id="gateBtn" style="min-height:44px"></div><p id="gateErr" style="margin:0;color:var(--bad,#b3261e);min-height:20px"></p><div id="gateExtra"></div></div>';
+    document.documentElement.appendChild(d);gateEl=d;
+    const err=d.querySelector('#gateErr');err.textContent=msg||'';
+    const cid=gateOn();
+    loadGsi().then(()=>{initGsi(cid);google.accounts.id.renderButton(d.querySelector('#gateBtn'),{theme:'outline',size:'large',text:'signin_with',locale:'pt-BR',width:280});try{google.accounts.id.prompt()}catch(e){}})
+      .catch(e=>{
+        err.textContent=e.message;
+        if(sess&&sess.at&&Date.now()-sess.at<30*864e5&&!navigator.onLine){
+          const b=document.createElement('button');b.className='btn ghost';b.textContent='Continuar sem conexão';b.onclick=()=>gateHide();
+          b.style.cssText='all:unset;cursor:pointer;border:1px solid var(--line,#dbe1ec);border-radius:6px;padding:8px 14px;font-weight:600';
+          d.querySelector('#gateExtra').appendChild(b)}
+      });
+  }
+  async function refreshSess(){
+    const cid=gateOn();if(!cid)throw new Error('sem login');
+    await loadGsi();initGsi(cid);const w=waitCred(8000);google.accounts.id.prompt();return w;
+  }
+  function logout(){
+    sess=null;lsSet(SK,null);try{google.accounts.id.disableAutoSelect()}catch(e){}
+    gateShow();redraw();
+  }
+  if(gateOn()&&!validSess())gateShow();
+
   /* ---------- planilha Google (Apps Script) ---------- */
   async function call(body){
+    if(cfg.clientId&&!validSess()){
+      try{await refreshSess()}catch(e){throw new Error('Sessão expirada. Toque em "Entrar com Google" no menu.')}
+    }
     const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),30000);
     try{
       const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body:JSON.stringify({token:cfg.token,...body}),redirect:'follow',signal:ctl.signal});
+        body:JSON.stringify({token:cfg.clientId?undefined:cfg.token,idToken:cfg.clientId?sess.idToken:undefined,...body}),redirect:'follow',signal:ctl.signal});
       const j=await r.json();
       if(!j.ok)throw new Error(j.error||'Erro na planilha');
       return j;
@@ -290,22 +351,41 @@ window.CJN=true;
   function openCfg(){
     const layer=document.getElementById('layer');
     layer.innerHTML=`<div class="modal"><form id="cfgf"><h2>Planilha Google</h2>
-      <p class="full sub">Cole o endereço do aplicativo web (termina em /exec) e o código de acesso definidos no Apps Script. Ficam guardados só neste aparelho. Ao conectar, os dados da planilha substituem os deste aparelho.</p>
+      <p class="full sub">Cole o endereço do aplicativo web (termina em /exec). Para exigir login, informe também o Client ID do Google e entre com uma conta autorizada. Tudo fica guardado só neste aparelho. Ao conectar, os dados da planilha substituem os deste aparelho.</p>
       <label class="full">Endereço do aplicativo web<input id="cfgUrl" type="url" required value="${esc(cfg?.url||'')}" placeholder="https://script.google.com/macros/s/…/exec"></label>
-      <label class="full">Código de acesso<input id="cfgTok" type="password" required autocomplete="off" value="${esc(cfg?.token||'')}"></label>
+      <label class="full">Client ID do Google (login)<input id="cfgCid" type="text" autocomplete="off" value="${esc(cfg?.clientId||'')}" placeholder="123456789-abc….apps.googleusercontent.com"></label>
+      <label class="full">Código de acesso (só se não usar o login Google)<input id="cfgTok" type="password" autocomplete="off" value="${esc(cfg?.token||'')}"></label>
+      <div class="full" id="cfgG" hidden style="display:flex;flex-direction:column;gap:6px;align-items:center"><span class="sub">Clique abaixo e escolha a conta Google autorizada:</span><div id="cfgGb" style="min-height:44px"></div></div>
       <div class="acts">${cfg?'<button type="button" class="btn danger sp" id="cfgOff">Desconectar</button>':''}<button type="button" class="btn ghost" id="cfgX">Cancelar</button><button class="btn" id="cfgGo">Conectar e sincronizar</button></div></form></div>`;
-    const close=()=>layer.innerHTML='';
+    const close=()=>{layer.innerHTML='';credWait=null};
     layer.querySelector('#cfgX').onclick=close;
     const off=layer.querySelector('#cfgOff');
-    if(off)off.onclick=async()=>{cfg=null;queue=[];await metaPut('cfg',null);await metaPut('queue',null);close();setState('local');toast('Planilha desconectada')};
+    if(off)off.onclick=async()=>{cfg=null;queue=[];sess=null;lsSet(SK,null);lsSet(GK,null);gateHide();await metaPut('cfg',null);await metaPut('queue',null);close();setState('local');toast('Planilha desconectada')};
     layer.querySelector('#cfgf').onsubmit=async e=>{
       e.preventDefault();
-      const url=layer.querySelector('#cfgUrl').value.trim(),token=layer.querySelector('#cfgTok').value;
+      const url=layer.querySelector('#cfgUrl').value.trim(),token=layer.querySelector('#cfgTok').value,cid=layer.querySelector('#cfgCid').value.trim();
       if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)){toast('O endereço deve começar com https://script.google.com/');return}
-      const btn=layer.querySelector('#cfgGo');btn.textContent='Testando…';
-      const old=cfg;cfg={url,token};
-      try{await call({action:'ping'});await metaPut('cfg',cfg);close();toast('Conectado');await syncNow()}
-      catch(ex){cfg=old;btn.textContent='Conectar e sincronizar';toast(ex.message||'Não foi possível conectar')}
+      if(!cid&&!token){toast('Informe o Client ID do Google ou o código de acesso');return}
+      if(cid&&!/^[\w.-]+\.apps\.googleusercontent\.com$/.test(cid)){toast('Client ID inválido. Ele termina em .apps.googleusercontent.com');return}
+      const btn=layer.querySelector('#cfgGo');
+      const old=cfg,oldSess=sess;
+      try{
+        if(cid){
+          btn.textContent='Aguardando login…';btn.disabled=true;
+          layer.querySelector('#cfgG').hidden=false;
+          await loadGsi();initGsi(cid);
+          google.accounts.id.renderButton(layer.querySelector('#cfgGb'),{theme:'outline',size:'large',text:'signin_with',locale:'pt-BR',width:280});
+          const w=waitCred(180000);await w;
+          cfg={url,token,clientId:cid};
+        }else cfg={url,token};
+        btn.textContent='Testando…';
+        await call({action:'ping'});
+        await metaPut('cfg',cfg);
+        if(cid)lsSet(GK,cid);else{lsSet(GK,null);sess=null;lsSet(SK,null)}
+        close();redraw();toast(cid&&sess?'Conectado como '+sess.email:'Conectado');await syncNow();
+      }catch(ex){
+        cfg=old;if(cid){sess=oldSess;if(!oldSess)lsSet(SK,null)}
+        btn.disabled=false;btn.textContent='Conectar e sincronizar';toast(ex.message||'Não foi possível conectar')}
     };
   }
 
@@ -330,10 +410,10 @@ window.CJN=true;
   }
   function escolherBackup(){const i=document.createElement('input');i.type='file';i.accept='application/json,.json';i.onchange=()=>{if(i.files[0])importar(i.files[0])};i.click()}
 
-  window.footHtml=()=>`<div class="foot"><div class="fst${state==='error'?' bad':''}">${esc(stText())}</div><button data-sh="cfg">Planilha Google</button><button data-sh="export">Exportar backup</button><button data-sh="import">Importar backup</button></div>`;
+  window.footHtml=()=>`<div class="foot"><div class="fst${state==='error'?' bad':''}">${esc(stText())}</div>${cfg&&cfg.clientId?`<button data-sh="${validSess()?'logout':'login'}">${validSess()?'Sair ('+esc(sess.email)+')':'Entrar com Google'}</button>`:''}<button data-sh="cfg">Planilha Google</button><button data-sh="export">Exportar backup</button><button data-sh="import">Importar backup</button></div>`;
   document.addEventListener('click',e=>{
     const a=e.target.closest('[data-sh]');
-    if(a){const k=a.dataset.sh;if(k==='cfg')openCfg();else if(k==='export')exportar();else escolherBackup();return}
+    if(a){const k=a.dataset.sh;if(k==='cfg')openCfg();else if(k==='logout')logout();else if(k==='login')gateShow();else if(k==='export')exportar();else escolherBackup();return}
     const l=e.target.closest('a[href^="data:"]');
     if(l){e.preventDefault();fetch(l.href).then(r=>r.blob()).then(b=>window.open(URL.createObjectURL(b),'_blank'))}
   });
@@ -346,6 +426,7 @@ window.CJN=true;
       if(!seeded&&COLS.every(c=>!mem[c].size)){for(const c of COLS)for(const [id,d] of Object.entries(SEED[c])){mem[c].set(id,d);await put(c,id,d)}}
       await metaPut('seeded',true);
       cfg=(await metaGet('cfg'))||null;queue=(await metaGet('queue'))||[];
+      if(cfg&&cfg.clientId&&!gateOn())lsSet(GK,cfg.clientId);
     }
   }
   ready=init();

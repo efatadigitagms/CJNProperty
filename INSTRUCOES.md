@@ -116,8 +116,35 @@ Faça o passo 6 em cada aparelho que for usar.
 - **Fotos e PDFs**: o campo vira um **link** (Google Drive ou endereço da imagem), porque fotos não cabem em uma célula. No Drive, deixe o arquivo compartilhado por link para a foto aparecer no cartão.
 - Depois de alterar o `Code.gs`, use **Implantar → Gerenciar implantações → Editar → Nova versão**. O endereço continua o mesmo.
 
+### Login com a conta Google (recomendado)
+Com o login, só e-mails da sua lista entram. O app mostra uma tela de **Entrar com Google** e o Apps Script confere o login antes de ler ou gravar qualquer dado. Isso substitui o código secreto.
+
+**A. Criar o Client ID (Google Cloud, uma vez)**
+1. Abra https://console.cloud.google.com e crie um projeto (por exemplo, *CJNProperty*).
+2. Menu **APIs e serviços → Tela de permissão OAuth** (ou *Google Auth Platform*). Tipo de usuário **Externo**, nome do app *CJNProperty*, seu e-mail de suporte. Em **Usuários de teste**, adicione os e-mails que vão usar o app (até 100). Não precisa publicar nem verificar o app.
+3. **Credenciais → Criar credenciais → ID do cliente OAuth → Aplicativo da Web**.
+   - *Origens JavaScript autorizadas*: `https://SEU-USUARIO.github.io` (só o endereço do site, sem `/CJNProperty` e sem barra no fim). Para este projeto: `https://efatadigitagms.github.io`.
+   - *URIs de redirecionamento*: deixe vazio.
+4. Copie o **ID do cliente** (termina em `.apps.googleusercontent.com`). Ele não é secreto.
+
+**B. Ligar o Apps Script**
+1. No `Code.gs`, preencha `const CLIENT_ID = '...'` com o ID do cliente e `const ALLOWED_EMAILS = ['seu-email@gmail.com']` com os e-mails permitidos (separados por vírgula). Lista vazia = ninguém entra.
+2. Salve e use **Implantar → Gerenciar implantações → Editar → Nova versão**. Na primeira vez o Google pede uma autorização extra (acesso a serviço externo): **permita**.
+
+**C. Entrar no app**
+1. Botão **Planilha Google**: cole o endereço `/exec` e o **Client ID**, deixe o código vazio e toque em **Conectar e sincronizar**.
+2. Clique no botão do Google e escolha a conta autorizada. Se o e-mail não estiver na lista, o app avisa e **não conecta**.
+3. Dali em diante, ao abrir o app aparece a tela de login. O botão **Sair (seu e-mail)** no menu volta para essa tela.
+
+**Detalhes**
+- A sessão dura cerca de 1 hora. O app renova sozinho quando possível. Se não conseguir, o menu mostra **Entrar com Google** e as alterações ficam na fila até você entrar.
+- Sem internet, só entra quem já tinha entrado neste aparelho nos últimos 30 dias (botão *Continuar sem conexão*).
+- O que protege os dados de verdade é a conferência no Apps Script: sem uma conta autorizada a planilha não responde. A tela de login do app impede o uso casual do aparelho, mas os dados já baixados ficam no navegador do aparelho; em aparelho de terceiros use **Sair** e limpe os dados do site.
+- Para tirar alguém: remova o e-mail de `ALLOWED_EMAILS` e publique nova versão.
+- Se errar o Client ID, o app avisa na hora de conectar e nada muda. Se o botão do Google disser *origem não autorizada*, confira a origem no passo A.3.
+
 ### Segurança
-- O código secreto protege a planilha: quem tiver o endereço `/exec` **e** o código consegue ler e gravar tudo. Não compartilhe os dois em grupos nem em repositórios públicos.
+- Sem o login Google, o código secreto protege a planilha: quem tiver o endereço `/exec` **e** o código consegue ler e gravar tudo. Não compartilhe os dois em grupos nem em repositórios públicos.
 - A planilha tem CPFs e telefones. Mantenha-a privada e dê acesso só a quem precisa. Para trocar o código, edite `TOKEN`, publique uma nova versão e reconecte os aparelhos.
 
 ---
@@ -146,7 +173,10 @@ Faça o passo 6 em cada aparelho que for usar.
 
 | Situação | O que fazer |
 |---|---|
-| "Código de acesso incorreto" | O código digitado no app é diferente do `TOKEN` do script. |
+| "Código de acesso incorreto" | O código digitado no app é diferente do `TOKEN` do script (modo sem login Google). |
+| "Este e-mail não tem acesso" | O e-mail não está em `ALLOWED_EMAILS` (ou a nova versão da implantação não foi publicada). |
+| "Sessão expirada" | Toque em **Entrar com Google** no menu. |
+| Botão do Google não aparece ou erro de origem | Confira a origem JavaScript autorizada e se o site abre por `https://`. |
 | "Resposta inválida" ou "Sem conexão ou endereço incorreto" | Confira o endereço `/exec` e se a implantação está com acesso **Qualquer pessoa**. Depois de mudar o script, publique uma **nova versão**. |
 | "Aba db_... não existe" | Execute a função `setup` no Apps Script. |
 | Alterei na planilha e não apareceu | Aguarde 1 minuto ou volte para o app. Confira se a linha tem **Id** e se as datas estão corretas. |

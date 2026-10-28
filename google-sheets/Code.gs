@@ -3,17 +3,26 @@
  *
  * COMO USAR (uma vez só):
  * 1. Na planilha: Extensões > Apps Script. Apague o que houver e cole este arquivo inteiro.
- * 2. Troque o valor de TOKEN logo abaixo por um código seu (qualquer texto longo).
+ * 2. Escolha UM modo de acesso logo abaixo:
+ *    a) LOGIN COM GOOGLE (recomendado): preencha CLIENT_ID e ALLOWED_EMAILS. Só quem entrar com
+ *       uma conta Google dessa lista consegue ler ou gravar os dados.
+ *    b) CÓDIGO DE ACESSO: deixe CLIENT_ID vazio e troque o valor de TOKEN por um texto longo seu.
  * 3. Escolha a função "setup" no topo do editor e clique em Executar. Autorize quando o Google pedir.
  *    Isso cria as abas db_Imoveis, db_Locadores, db_Locatarios, db_Contratos e db_Pagamentos.
  *    Suas abas atuais não são alteradas.
  * 4. Implantar > Nova implantação > tipo "App da Web".
  *    Executar como: Eu. Quem pode acessar: Qualquer pessoa. Copie o endereço que termina em /exec.
- * 5. No aplicativo: botão "Planilha Google", cole o endereço e o código.
+ * 5. No aplicativo: botão "Planilha Google", cole o endereço e o Client ID (ou o código) e conecte.
+ *    No modo Google, o Google pede uma autorização extra na primeira implantação (acesso externo): permita.
  *
  * Depois de mudar este código, use Implantar > Gerenciar implantações > Editar > Nova versão.
  */
 const TOKEN = 'TROQUE-ESTE-CODIGO';
+
+// Modo login com Google. Client ID criado no Google Cloud (Credenciais > ID do cliente OAuth > Aplicativo da Web).
+const CLIENT_ID = '';
+// E-mails com permissão de acesso, por exemplo ['voce@gmail.com']. Lista vazia = ninguém entra.
+const ALLOWED_EMAILS = [];
 
 // [chave no app, nome da coluna na planilha, tipo: t=texto, n=numero, d=data AAAA-MM-DD]
 const SCHEMA = {
@@ -123,7 +132,8 @@ function doGet() {
 function doPost(e) {
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (err) { return out_({ok: false, error: 'Pedido inválido'}); }
-  if (!req || req.token !== TOKEN) return out_({ok: false, error: 'Código de acesso incorreto'});
+  const authErr = auth_(req);
+  if (authErr) return out_({ok: false, error: authErr});
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -136,6 +146,33 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/** Devolve '' se o pedido está autorizado, ou a mensagem de erro. */
+function auth_(req) {
+  if (!req) return 'Pedido inválido';
+  if (!CLIENT_ID) {
+    if (TOKEN === 'TROQUE-ESTE-CODIGO') return 'Configure o TOKEN ou o CLIENT_ID no Apps Script';
+    return req.token === TOKEN ? '' : 'Código de acesso incorreto';
+  }
+  const t = req.idToken;
+  if (!t) return 'Entre com a conta Google';
+  const sha = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, t)
+    .map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('');
+  const cache = CacheService.getScriptCache();
+  if (cache.get('idt_' + sha)) return '';
+  const r = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(t), {muteHttpExceptions: true});
+  if (r.getResponseCode() !== 200) return 'Sessão expirada. Entre com o Google de novo.';
+  let j;
+  try { j = JSON.parse(r.getContentText()); } catch (err) { return 'Login inválido'; }
+  const iss = String(j.iss || '');
+  if (j.aud !== CLIENT_ID || (iss !== 'accounts.google.com' && iss !== 'https://accounts.google.com') || String(j.email_verified) !== 'true') return 'Login inválido';
+  const email = String(j.email || '').toLowerCase().trim();
+  const ok = ALLOWED_EMAILS.some(function (e) { return String(e).toLowerCase().trim() === email; });
+  if (!ok) return 'Este e-mail não tem acesso ao CJNProperty';
+  const ttl = Math.max(1, Math.min(21600, Number(j.exp) - Math.floor(Date.now() / 1000)));
+  cache.put('idt_' + sha, email, ttl);
+  return '';
 }
 
 function sheet_(col) {
