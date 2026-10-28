@@ -3,26 +3,22 @@
  *
  * COMO USAR (uma vez só):
  * 1. Na planilha: Extensões > Apps Script. Apague o que houver e cole este arquivo inteiro.
- * 2. Escolha UM modo de acesso logo abaixo:
- *    a) LOGIN COM GOOGLE (recomendado): preencha CLIENT_ID e ALLOWED_EMAILS. Só quem entrar com
- *       uma conta Google dessa lista consegue ler ou gravar os dados.
- *    b) CÓDIGO DE ACESSO: deixe CLIENT_ID vazio e troque o valor de TOKEN por um texto longo seu.
+ * 2. Crie o seu usuário e senha: escolha a função "adicionarUsuario", edite USUARIO e SENHA dentro dela,
+ *    clique em Executar (autorize quando o Google pedir) e depois APAGUE a senha do código.
+ *    A senha fica guardada só como resumo criptografado. Para outro usuário, repita.
  * 3. Escolha a função "setup" no topo do editor e clique em Executar. Autorize quando o Google pedir.
  *    Isso cria as abas db_Imoveis, db_Locadores, db_Locatarios, db_Contratos e db_Pagamentos.
  *    Suas abas atuais não são alteradas.
  * 4. Implantar > Nova implantação > tipo "App da Web".
  *    Executar como: Eu. Quem pode acessar: Qualquer pessoa. Copie o endereço que termina em /exec.
- * 5. No aplicativo: botão "Planilha Google", cole o endereço e o Client ID (ou o código) e conecte.
- *    No modo Google, o Google pede uma autorização extra na primeira implantação (acesso externo): permita.
+ * 5. No aplicativo: botão "Planilha Google", cole o endereço e entre com usuário e senha.
  *
  * Depois de mudar este código, use Implantar > Gerenciar implantações > Editar > Nova versão.
  */
+// Modo antigo (opcional): código de acesso único. Deixe como está para usar só usuário e senha.
 const TOKEN = 'TROQUE-ESTE-CODIGO';
-
-// Modo login com Google. Client ID criado no Google Cloud (Credenciais > ID do cliente OAuth > Aplicativo da Web).
-const CLIENT_ID = '';
-// E-mails com permissão de acesso, por exemplo ['voce@gmail.com']. Lista vazia = ninguém entra.
-const ALLOWED_EMAILS = [];
+// Quantas horas o login vale antes de pedir a senha de novo (168 = 7 dias).
+const SESSION_HOURS = 168;
 
 // [chave no app, nome da coluna na planilha, tipo: t=texto, n=numero, d=data AAAA-MM-DD]
 const SCHEMA = {
@@ -132,6 +128,7 @@ function doGet() {
 function doPost(e) {
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (err) { return out_({ok: false, error: 'Pedido inválido'}); }
+  if (req && req.action === 'login') return out_(login_(req));
   const authErr = auth_(req);
   if (authErr) return out_({ok: false, error: authErr});
   const lock = LockService.getScriptLock();
@@ -151,28 +148,80 @@ function doPost(e) {
 /** Devolve '' se o pedido está autorizado, ou a mensagem de erro. */
 function auth_(req) {
   if (!req) return 'Pedido inválido';
-  if (!CLIENT_ID) {
-    if (TOKEN === 'TROQUE-ESTE-CODIGO') return 'Configure o TOKEN ou o CLIENT_ID no Apps Script';
-    return req.token === TOKEN ? '' : 'Código de acesso incorreto';
+  if (req.session) {
+    const parts = String(req.session).split('.');
+    if (parts.length !== 2) return 'Sessão inválida. Entre de novo.';
+    let payload;
+    try { payload = Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString(); } catch (err) { return 'Sessão inválida. Entre de novo.'; }
+    if (hex_(Utilities.computeHmacSha256Signature(payload, secret_())) !== parts[1]) return 'Sessão inválida. Entre de novo.';
+    const i = payload.lastIndexOf('|');
+    const name = payload.slice(0, i), exp = Number(payload.slice(i + 1));
+    if (!(exp > Date.now() / 1000)) return 'Sessão expirada. Entre de novo.';
+    if (!users_()[name]) return 'Usuário sem acesso. Entre de novo.';
+    return '';
   }
-  const t = req.idToken;
-  if (!t) return 'Entre com a conta Google';
-  const sha = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, t)
-    .map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('');
-  const cache = CacheService.getScriptCache();
-  if (cache.get('idt_' + sha)) return '';
-  const r = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(t), {muteHttpExceptions: true});
-  if (r.getResponseCode() !== 200) return 'Sessão expirada. Entre com o Google de novo.';
-  let j;
-  try { j = JSON.parse(r.getContentText()); } catch (err) { return 'Login inválido'; }
-  const iss = String(j.iss || '');
-  if (j.aud !== CLIENT_ID || (iss !== 'accounts.google.com' && iss !== 'https://accounts.google.com') || String(j.email_verified) !== 'true') return 'Login inválido';
-  const email = String(j.email || '').toLowerCase().trim();
-  const ok = ALLOWED_EMAILS.some(function (e) { return String(e).toLowerCase().trim() === email; });
-  if (!ok) return 'Este e-mail não tem acesso ao CJNProperty';
-  const ttl = Math.max(1, Math.min(21600, Number(j.exp) - Math.floor(Date.now() / 1000)));
-  cache.put('idt_' + sha, email, ttl);
-  return '';
+  if (req.token) {
+    if (TOKEN !== 'TROQUE-ESTE-CODIGO' && req.token === TOKEN) return '';
+    return 'Código de acesso incorreto';
+  }
+  return 'Entre com usuário e senha';
+}
+
+function props_() { return PropertiesService.getScriptProperties(); }
+function users_() { try { return JSON.parse(props_().getProperty('USERS') || '{}'); } catch (err) { return {}; } }
+function secret_() {
+  let s = props_().getProperty('SECRET');
+  if (!s) { s = Utilities.getUuid() + Utilities.getUuid(); props_().setProperty('SECRET', s); }
+  return s;
+}
+function hex_(bytes) { return bytes.map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join(''); }
+function hashPw_(salt, pw) {
+  let h = salt + '|' + pw;
+  for (let i = 0; i < 1500; i++) h = hex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + h));
+  return h;
+}
+function setUser_(name, pw) {
+  name = String(name || '').toLowerCase().trim();
+  if (!name) throw new Error('Informe o usuário');
+  if (String(pw || '').length < 8) throw new Error('A senha precisa ter pelo menos 8 caracteres');
+  const all = users_(), salt = Utilities.getUuid();
+  all[name] = {s: salt, h: hashPw_(salt, String(pw))};
+  props_().setProperty('USERS', JSON.stringify(all));
+}
+
+/** Cria ou troca a senha de um usuário. Edite as duas linhas, execute, e DEPOIS APAGUE a senha deste código. */
+function adicionarUsuario() {
+  const USUARIO = 'seu-usuario';
+  const SENHA = 'troque-esta-senha';
+  setUser_(USUARIO, SENHA);
+  Logger.log('Usuário "' + USUARIO.toLowerCase().trim() + '" salvo. Agora APAGUE a senha deste código e salve.');
+}
+
+/** Remove um usuário (ele perde o acesso na hora). */
+function removerUsuario() {
+  const USUARIO = 'seu-usuario';
+  const all = users_();
+  delete all[String(USUARIO).toLowerCase().trim()];
+  props_().setProperty('USERS', JSON.stringify(all));
+  Logger.log('Usuário removido.');
+}
+
+function login_(req) {
+  const name = String(req.user || '').toLowerCase().trim();
+  const cache = CacheService.getScriptCache(), fk = 'fail_' + name;
+  const fails = Number(cache.get(fk) || 0);
+  if (fails >= 5) return {ok: false, error: 'Muitas tentativas. Aguarde 15 minutos.'};
+  const u = users_()[name];
+  const h = hashPw_(u ? u.s : 'x', String(req.pass || ''));
+  if (!u || h !== u.h) {
+    cache.put(fk, String(fails + 1), 900);
+    return {ok: false, error: 'Usuário ou senha incorretos'};
+  }
+  cache.remove(fk);
+  const exp = Math.floor(Date.now() / 1000) + SESSION_HOURS * 3600;
+  const payload = name + '|' + exp;
+  const sig = hex_(Utilities.computeHmacSha256Signature(payload, secret_()));
+  return {ok: true, session: Utilities.base64EncodeWebSafe(payload) + '.' + sig, user: name, exp: exp};
 }
 
 function sheet_(col) {
