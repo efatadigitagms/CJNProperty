@@ -1,34 +1,27 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#043C95">
+<meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}body{margin:0}</style>
+<style>:root{color-scheme:dark;background:#000;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}body{margin:0}</style>
 <title>CJNProperty</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* Layout: barra lateral fixa no desktop, abas rolaveis no topo no celular; conteudo em coluna unica de largura limitada */
 :root{
-  --bg:#f4f6fa; --surface:#ffffff; --ink:#101a2e; --muted:#5d6a82; --line:#dbe1ec;
-  --accent:#043C95; --accent-ink:#ffffff; --accent-soft:#e3ebf8;
-  --ok:#1f7a45; --ok-soft:#dff3e6; --warn:#a15c00; --warn-soft:#fbeccd; --bad:#b3261e; --bad-soft:#fbe0dd; --idle:#4e5b74; --idle-soft:#e8edf5;
+  --bg:#000000; --surface:#0e0e0e; --ink:#eef1f7; --muted:#98a2b6; --line:#262b36;
+  --accent:#7fa9ee; --accent-ink:#04183d; --accent-soft:#12233f;
+  --ok:#5fd08a; --ok-soft:#10301d; --warn:#f0b24d; --warn-soft:#33260c; --bad:#ff8a80; --bad-soft:#3a1714; --idle:#a8b4cb; --idle-soft:#1a1f2b;
   --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
   --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0a1020; --surface:#121a2f; --ink:#e8edf7; --muted:#96a3bd; --line:#232f4a;
-  --accent:#7fa9ee; --accent-ink:#04183d; --accent-soft:#15294f;
-  --ok:#5fd08a; --ok-soft:#173826; --warn:#f0b24d; --warn-soft:#3d2d10; --bad:#ff8a80; --bad-soft:#431d1a; --idle:#a8b4cb; --idle-soft:#1e2942; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0a1020; --surface:#121a2f; --ink:#e8edf7; --muted:#96a3bd; --line:#232f4a;
-  --accent:#7fa9ee; --accent-ink:#04183d; --accent-soft:#15294f;
-  --ok:#5fd08a; --ok-soft:#173826; --warn:#f0b24d; --warn-soft:#3d2d10; --bad:#ff8a80; --bad-soft:#431d1a; --idle:#a8b4cb; --idle-soft:#1e2942; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body);padding-inline:16px}
 .shell{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:200px minmax(0,1fr);gap:28px;padding-block:20px}
