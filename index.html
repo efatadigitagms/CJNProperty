@@ -487,7 +487,7 @@ const SCHEMA={
     ['valor','Valor mensal (R$)','number'],['numero','Nº do contrato','text'],['pdf','Contrato em PDF','file','application/pdf']]},
   pagamentos:{titulo:'Pagamento',campos:[
     ['contratoId','Contrato','rel',optsContratos],['referencia','Mês de referência','month'],['valor','Valor (R$)','number'],
-    ['vencimento','Vencimento','date'],['dataPagamento','Data do pagamento','date'],['forma','Forma de pagamento','select',['','Pix','Dinheiro','Transferência','Cartão','Boleto']]]}
+    ['vencimento','Vencimento','date'],['dataPagamento','Data do pagamento','date'],['forma','Forma de pagamento (várias: Pix 500,00 + Dinheiro 300,00)','text']]}
 };
 
 /* ---------- persistência ---------- */
@@ -743,21 +743,44 @@ function reciboTexto(p){
   return `Recibo ${num}\nRecebi de ${lt?.nome||'—'} a importância de ${brl(v)} (${extenso(v)}), referente ao aluguel de ${mesLabel(p.referencia)} do imóvel ${im?.endereco||'—'}.\nPago em ${dt(p.dataPagamento)}${p.forma?' via '+p.forma:''}.\n${ld?.nome||''}`;
 }
 
+/* Várias formas no mesmo pagamento: guardadas no campo "forma" como texto legível, ex.: "Pix 500,00 + Dinheiro 300,00". Uma forma só continua como "Pix". */
+function formasFmt(rows){if(rows.length===1)return rows[0].n||'';return rows.map(r=>r.n+' '+(+r.v||0).toFixed(2).replace('.',',')).join(' + ')}
+function formasParse(f,tot){const t=String(f||'').trim();if(!t)return [];
+  if(!t.includes(' + ')&&!/\s\d[\d.]*,\d{2}$/.test(t))return [{n:t,v:tot}];
+  return t.split(' + ').map(x=>{const m=x.trim().match(/^(.*?)\s+(\d[\d.]*,\d{2})$/);return m?{n:m[1],v:parseFloat(m[2].replace(/\./g,'').replace(',','.'))}:{n:x.trim(),v:0}})}
 function openPagar(id){
   const p=by('pagamentos',id);if(!p)return;
   const {lt}=reciboInfo(p),layer=document.getElementById('layer');
   layer.innerHTML=`<div class="modal"><form id="payf"><h2>Registrar pagamento</h2>
     <p class="full sub">${esc(lt?.nome||'—')} · ${esc(mesLabel(p.referencia))} · ${brl(p.valor)} · vence ${dt(p.vencimento)}</p>
     <label>Data do pagamento<input id="pgData" type="date" required value="${today()}"></label>
-    <label>Forma de pagamento<select id="pgForma">${['','Pix','Dinheiro','Transferência','Cartão','Boleto'].map(o=>`<option ${o===(p.forma||'')?'selected':''}>${o}</option>`).join('')}</select></label>
+    <div class="full" id="pgFormas"></div>
     <div class="acts"><button type="button" class="btn ghost" id="pgX">Cancelar</button><button class="btn">Registrar e ver recibo</button></div></form></div>`;
   const close=()=>layer.innerHTML='';
+  const FORMAS=['Pix','Dinheiro','Transferência','Cartão','Boleto'],tot=+p.valor||0,box=layer.querySelector('#pgFormas');
+  let rows=formasParse(p.forma,tot);if(!rows.length)rows=[{n:'',v:tot}];
+  const drawF=()=>{const multi=rows.length>1,soma=rows.reduce((a,r)=>a+(+r.v||0),0),dif=Math.round((tot-soma)*100)/100;
+    box.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px"><span class="sub">Forma de pagamento</span>`+rows.map((r,i)=>`<div style="display:flex;gap:8px;align-items:center">
+      <select data-fn="${i}" style="flex:1;min-width:0">${(multi?FORMAS:['',...FORMAS]).map(o=>`<option ${o===r.n?'selected':''}>${o}</option>`).join('')}</select>
+      ${multi?`<input data-fv="${i}" type="number" step="0.01" min="0" value="${(+r.v||0).toFixed(2)}" style="width:120px" aria-label="Valor desta forma">
+      <button type="button" class="btn ghost" data-fx="${i}" aria-label="Remover forma">×</button>`:''}</div>`).join('')
+      +`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn ghost" id="pgAdd">+ Adicionar outra forma</button>`
+      +(multi?`<span class="sub" style="color:${dif===0?'var(--ok)':'var(--bad)'}">Soma ${brl(soma)} de ${brl(tot)}${dif>0?' · faltam '+brl(dif):dif<0?' · passou '+brl(-dif):' ✓'}</span>`:'')+`</div></div>`;
+    box.querySelectorAll('[data-fn]').forEach(el=>el.onchange=()=>{rows[+el.dataset.fn].n=el.value});
+    box.querySelectorAll('[data-fv]').forEach(el=>el.onchange=()=>{rows[+el.dataset.fv].v=parseFloat(el.value)||0;setTimeout(drawF,0)});
+    box.querySelectorAll('[data-fx]').forEach(el=>el.onclick=()=>{rows.splice(+el.dataset.fx,1);if(rows.length===1)rows[0].v=tot;drawF()});
+    box.querySelector('#pgAdd').onclick=()=>{if(rows.length===1){rows[0].v=tot;rows.push({n:'Pix',v:0})}else{const rest=Math.max(0,Math.round((tot-soma)*100)/100);rows.push({n:'Pix',v:rest})}
+      if(rows.length===2&&!rows[0].n)rows[0].n='Dinheiro';drawF()}};
+  drawF();
   layer.querySelector('#pgX').onclick=close;
   layer.querySelector('.modal').addEventListener('mousedown',e=>{if(e.target.classList.contains('modal'))close()});
   layer.querySelector('#payf').onsubmit=async e=>{
     e.preventDefault();
-    const dataPagamento=layer.querySelector('#pgData').value,forma=layer.querySelector('#pgForma').value;
+    const dataPagamento=layer.querySelector('#pgData').value;
     if(!dataPagamento){toast('Informe a data do pagamento');return}
+    if(rows.length>1){const soma=Math.round(rows.reduce((a,r)=>a+(+r.v||0),0)*100);if(soma!==Math.round(tot*100)){toast('A soma das formas deve ser igual ao valor do pagamento');return}
+      if(rows.some(r=>!r.n||!(+r.v>0))){toast('Informe forma e valor em todas as linhas');return}}
+    const forma=formasFmt(rows);
     try{await db.collection('pagamentos').doc(id).update({dataPagamento,forma});close();toast('Pagamento registrado');openRecibo(id,{dataPagamento,forma})}
     catch(err){toast('Sem permissão para alterar')}
   };
@@ -863,7 +886,7 @@ function openRecibo(id,over){
       <div class="ass">${ld?.assinatura?`<img class="sig" src="${esc(ld.assinatura)}" alt="Assinatura">`:''}<div class="ln"></div><b>${esc(ld?.nome||'Locador')}</b><span>${ld?.doc?'CPF/CNPJ '+esc(cpf(ld.doc)):''}${ld?.pix?' · Pix: '+esc(ld.pix):''}</span></div>
       <footer>CJNProperty · emitido em ${dt(today())} · ${lbl}</footer></article>`;
     layer.innerHTML=`<div class="modal"><div class="rwrap" data-vias="${RECVIAS}">${art('Via do locador')}${art('Via do locatário',1)}
-      <div class="racts noprint"><p class="sub" style="width:100%;margin:0 0 4px">Escolha quais vias saem no PDF e na impressão. As vias são idênticas, só muda o rodapé.</p><div class="bar"><label>Vias do recibo<select id="recVias"><option value="2" ${RECVIAS==='2'?'selected':''}>2 vias (locador + locatário)</option><option value="loc" ${RECVIAS==='loc'?'selected':''}>Só a via do locador</option><option value="lt" ${RECVIAS==='lt'?'selected':''}>Só a via do locatário</option></select></label><label>Data do pagamento<input id="recData" type="date" value="${esc(p.dataPagamento||'')}"></label><label>Forma de pagamento<select id="recForma">${['','Pix','Dinheiro','Transferência','Cartão','Boleto'].map(o=>`<option ${o===(p.forma||'')?'selected':''}>${o}</option>`).join('')}</select></label></div>
+      <div class="racts noprint"><p class="sub" style="width:100%;margin:0 0 4px">Escolha quais vias saem no PDF e na impressão. As vias são idênticas, só muda o rodapé.</p><div class="bar"><label>Vias do recibo<select id="recVias"><option value="2" ${RECVIAS==='2'?'selected':''}>2 vias (locador + locatário)</option><option value="loc" ${RECVIAS==='loc'?'selected':''}>Só a via do locador</option><option value="lt" ${RECVIAS==='lt'?'selected':''}>Só a via do locatário</option></select></label><label>Data do pagamento<input id="recData" type="date" value="${esc(p.dataPagamento||'')}"></label><label>Forma de pagamento<input id="recForma" type="text" list="dlFormas" placeholder="Pix 500,00 + Dinheiro 300,00" value="${esc(p.forma||'')}"><datalist id="dlFormas"><option>Pix</option><option>Dinheiro</option><option>Transferência</option><option>Cartão</option><option>Boleto</option></datalist></label></div>
       <div class="bar"><button class="btn" data-recact="pdf">Baixar PDF</button>${window.CJN?'<button class="btn ghost" data-recact="print">Imprimir</button>':''}<button class="btn ghost" data-recact="copy">Copiar texto</button>${wa?`<a class="btn ghost" href="https://wa.me/${wa}?text=${encodeURIComponent(reciboTexto(p))}" target="_blank" rel="noopener">WhatsApp</a>`:''}<button class="btn ghost" data-recact="close">Fechar</button></div></div></div></div>`;
     layer.querySelector('.modal').addEventListener('mousedown',e=>{if(e.target.classList.contains('modal'))layer.innerHTML=''});
   };
