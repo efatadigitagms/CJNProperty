@@ -24,7 +24,8 @@ Gerenciar imóveis alugados do proprietário: imóveis, locadores, locatários, 
 12. **Fotos no site do GitHub**: o envio de foto foi criado para o site (reduz a imagem para caber numa célula da planilha).
 13. **Tempo do locatário no imóvel** (anos e meses) em Imóveis, Contratos e Pessoas.
 14. **Mais de uma forma de pagamento** no mesmo recibo (ex.: Pix 500,00 + Dinheiro 300,00).
-15. **Dados reais** migrados para a planilha do proprietário; repositório público fica só com dados fictícios.
+15. **Arrecadado no ano**: cartão no painel e gráfico de barras por mês, com escolha do ano (conta pela data de recebimento).
+16. **Dados reais** migrados para a planilha do proprietário; repositório público fica só com dados fictícios.
 
 ## 3. Arquitetura
 

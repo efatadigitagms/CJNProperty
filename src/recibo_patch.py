@@ -250,7 +250,7 @@ def patch(s):
         assert a in s,a[:70]
         s=s.replace(a,b,count)
     rep("['pagamentos','Pagamentos']];","['pagamentos','Pagamentos'],['recibos','Recibos']];")
-    rep("calMes=ym(new Date());","calMes=ym(new Date()), recMes='todos';")
+    rep("painelAno=new Date().getFullYear();","painelAno=new Date().getFullYear(), recMes='todos';")
     rep("['dataPagamento','Data do pagamento','date']]}","['dataPagamento','Data do pagamento','date'],['forma','Forma de pagamento (várias: Pix 500,00 + Dinheiro 300,00)','text']]}")
     rep("['pix','Chave Pix','text']]}","['pix','Chave Pix','text'],['assinatura','Assinatura digital (PNG)','sig','full']]}")
     rep("    else if(t==='file'){\n      if(!assets) return '';","    else if(t==='sig'){inp=`<input id=\"f_${k}\" type=\"hidden\" value=\"${esc(v)}\"><div class=\"sigbox\"><div class=\"pv\" id=\"sigPv\">${v?`<img src=\"${esc(v)}\" alt=\"Assinatura\">`:'Sem assinatura'}</div><div><input id=\"sigFile\" type=\"file\" accept=\"image/png,image/*\"><button type=\"button\" class=\"btn sm ghost\" data-recact=\"sigdel\">Remover</button></div></div><span class=\"sub\">PNG com fundo transparente funciona melhor. Aparece nos recibos.</span>`}\n    else if(t==='file'){\n      if(!assets) return '';")

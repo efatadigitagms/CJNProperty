@@ -36,10 +36,17 @@ h2{font:700 16px var(--f-display);margin:0 0 10px}
 .btn.ghost:hover{background:var(--idle-soft)}
 .btn.danger{background:var(--bad);color:#fff}
 .btn.sm{padding:4px 10px;font-size:12px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
 .kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
 .kpi .v{font:500 24px var(--f-mono);font-variant-numeric:tabular-nums;margin-top:4px}
+.ano{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;margin-top:14px;height:170px}
+.mb{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0}
+.mb .bar2{width:100%;flex:1;display:flex;align-items:flex-end;background:var(--idle-soft);border-radius:4px;overflow:hidden}
+.mb .bar2 i{display:block;width:100%;background:var(--ok);min-height:0;border-radius:4px 4px 0 0}
+.mb .mv{font:500 10px var(--f-mono);color:var(--muted);height:12px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.mb .ml{font-size:11px;color:var(--muted);text-transform:uppercase}
+@media (max-width:760px){.ano{gap:3px}.mb .mv{display:none}}
 .kpi .n{color:var(--muted);font-size:12px;margin-top:2px}
 .kpi.bad .v{color:var(--bad)}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
@@ -123,7 +130,7 @@ const LOGO='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALIAAADICAIAAADDUSyYAA
 const COLS=['imoveis','locadores','locatarios','contratos','pagamentos'];
 const D={imoveis:[],locadores:[],locatarios:[],contratos:[],pagamentos:[]};
 const loaded={};
-let db=null, assets=null, view='painel', pessoasTab='locatarios', pagMes=ym(new Date()), pagFiltro='todos', pagModo='lista', calContrato='', calMes=ym(new Date());
+let db=null, assets=null, view='painel', pessoasTab='locatarios', pagMes=ym(new Date()), pagFiltro='todos', pagModo='lista', calContrato='', calMes=ym(new Date()), painelAno=new Date().getFullYear();
 const VIEWS=[['painel','Painel de Controlo'],['imoveis','Imóveis'],['contratos','Contratos'],['pessoas','Pessoas'],['pagamentos','Pagamentos']];
 
 /* ---------- utilidades ---------- */
@@ -230,6 +237,12 @@ function vPainel(){
   const mes=ym(new Date());
   const doMes=D.pagamentos.filter(p=>p.referencia===mes);
   const recebido=doMes.filter(p=>p.dataPagamento).reduce((s,p)=>s+(+p.valor||0),0);
+  const pagos=D.pagamentos.filter(p=>p.dataPagamento);
+  const anos=[...new Set([new Date().getFullYear(),...pagos.map(p=>+p.dataPagamento.slice(0,4))])].filter(Boolean).sort((a,b)=>b-a);
+  if(!anos.includes(painelAno))painelAno=anos[0];
+  const porMes=Array.from({length:12},(_,i)=>pagos.filter(p=>p.dataPagamento.slice(0,7)===painelAno+'-'+String(i+1).padStart(2,'0')).reduce((s,p)=>s+(+p.valor||0),0));
+  const totalAno=porMes.reduce((a,b)=>a+b,0),qtdAno=pagos.filter(p=>+p.dataPagamento.slice(0,4)===painelAno).length,maxMes=Math.max(...porMes,1);
+  const MM=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const atrasados=D.pagamentos.filter(p=>pagStatus(p)[0]==='Atrasado');
   const atrasoTotal=atrasados.reduce((s,p)=>s+(+p.valor||0),0);
   const alugados=D.imoveis.filter(i=>i.status==='Alugado').length;
@@ -242,8 +255,13 @@ function vPainel(){
     <div class="kpi"><div class="l">Imóveis alugados</div><div class="v">${alugados} / ${D.imoveis.length}</div><div class="n">${livres.length} disponível(is)</div></div>
     <div class="kpi"><div class="l">Receita mensal contratada</div><div class="v">${brl(receita)}</div><div class="n">${ativos.length} contrato(s) ativo(s)</div></div>
     <div class="kpi"><div class="l">Recebido em ${mesLabel(mes).split(' ')[0]}</div><div class="v">${brl(recebido)}</div><div class="n">${doMes.length?doMes.filter(p=>p.dataPagamento).length+' de '+doMes.length+' cobranças':'Nenhuma cobrança gerada'}</div></div>
+    <div class="kpi"><div class="l">Arrecadado em ${painelAno}</div><div class="v">${brl(totalAno)}</div><div class="n">${qtdAno} pagamento(s) recebido(s)</div></div>
     <div class="kpi ${atrasados.length?'bad':''}"><div class="l">Em atraso</div><div class="v">${brl(atrasoTotal)}</div><div class="n">${atrasados.length} cobrança(s)${atrasados.length?' · maior atraso: '+Math.max(...atrasados.map(diasAtraso))+' dia(s)':''}</div></div>
   </div>
+  <section class="panel" style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Arrecadado por mês</h2>
+    <label class="sub" style="display:flex;align-items:center;gap:8px">Ano<select id="selAno">${anos.map(a=>`<option ${a===painelAno?'selected':''}>${a}</option>`).join('')}</select></label></div>
+    <div class="ano" role="img" aria-label="Valores recebidos em cada mês de ${painelAno}">${porMes.map((v,i)=>`<div class="mb" title="${MM[i]}/${painelAno}: ${brl(v)}"><span class="mv">${v?brl(v).replace('R$ ',''):''}</span><div class="bar2"><i style="height:${Math.round(v/maxMes*100)}%"></i></div><span class="ml">${MM[i]}</span></div>`).join('')}</div>
+    <p class="sub" style="margin:10px 0 0">Total do ano: <b class="mono">${brl(totalAno)}</b> · contado pela data em que o pagamento foi recebido.</p></section>
   <div class="grid2">
     <section class="panel"><h2>Cobranças em aberto</h2><div class="list">${abertos.length?abertos.map(p=>{const[s,k]=pagStatus(p);return `<div class="row"><div class="t"><b>${esc(pn(p))}</b><span>vence ${dt(p.vencimento)} · ${mesLabel(p.referencia)}</span></div><div style="text-align:right"><div class="mono">${brl(p.valor)}</div>${chip(s,k)}${diasAtraso(p)?`<div class="sub" style="color:var(--bad);font-weight:600">${atrasoTxt(p)}</div>`:''}</div></div>`}).join(''):empty('Tudo em dia','Gere as cobranças do mês na aba Pagamentos.')}</div></section>
     <section class="panel"><h2>Contratos terminando em até 6 meses</h2><div class="list">${vencendo.length?vencendo.map(({c,d})=>`<div class="row"><div class="t"><b>${esc(by('locatarios',c.locatarioId)?.nome||'—')}</b><span>${esc(imLabel(by('imoveis',c.imovelId)))}</span></div><div style="text-align:right"><div class="mono">${dt(c.saida)}</div>${chip(d<0?'Vencido':d+' dias',d<60?'warn':'')}</div></div>`).join(''):empty('Nenhum vencimento próximo','Os contratos ativos terminam depois de 6 meses.')}</div></section>
@@ -394,6 +412,7 @@ document.addEventListener('click',async e=>{
   else if(d.pay){const p=by('pagamentos',d.pay);try{await db.collection('pagamentos').doc(p.id).update({dataPagamento:p.dataPagamento?'':today()});toast(p.dataPagamento?'Pagamento desfeito':'Pagamento registrado')}catch(err){toast('Sem permissão para alterar')}}
 });
 document.addEventListener('change',e=>{if(e.target.id==='selMes'){pagMes=e.target.value;render()}
+  if(e.target.id==='selAno'){painelAno=+e.target.value;render()}
   if(e.target.id==='selCal'){calContrato=e.target.value;render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-edit]'))e.target.click(); if(e.key==='Escape')document.getElementById('layer').innerHTML=''});
 
