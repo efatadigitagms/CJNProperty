@@ -1,5 +1,7 @@
 # CJNProperty — Instruções do projeto
 
+> Histórico completo de criação, arquitetura e checklist de publicação: veja `docs/COMO_O_SISTEMA_FOI_CRIADO.md`. O código-fonte está em `src/`.
+
 Aplicativo para gerenciar imóveis alugados: cadastro de imóveis, locadores e locatários, contratos, cobranças mensais com calendário e recibos de pagamento. Foi criado a partir da planilha `Gestao_Imobiliaria.xlsx`.
 
 ---

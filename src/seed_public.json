@@ -1,0 +1,79 @@
+{
+ "imoveis": {
+  "i1": {
+   "codigo": "101",
+   "endereco": "Rua das Flores, 101",
+   "bairro": "Centro",
+   "tipo": "Residencial",
+   "aluguel": 800,
+   "status": "Alugado",
+   "foto": ""
+  },
+  "i2": {
+   "codigo": "102",
+   "endereco": "Rua das Flores, 102",
+   "bairro": "Centro",
+   "tipo": "Comercial",
+   "aluguel": 1500,
+   "status": "Alugado",
+   "foto": ""
+  },
+  "i3": {
+   "codigo": "103",
+   "endereco": "Avenida Brasil, 250",
+   "bairro": "Jardim",
+   "tipo": "Residencial",
+   "aluguel": 1000,
+   "status": "Disponível",
+   "foto": ""
+  }
+ },
+ "locadores": {
+  "l001": {
+   "nome": "Maria Exemplo da Silva",
+   "doc": "00000000000",
+   "pix": "exemplo@email.com"
+  }
+ },
+ "locatarios": {
+  "t1": {
+   "nome": "João Exemplo de Souza",
+   "cpf": "11111111111",
+   "telefone": "11 90000-0000",
+   "email": "",
+   "profissao": "vendedor"
+  },
+  "t2": {
+   "nome": "Ana Modelo Pereira",
+   "cpf": "22222222222",
+   "telefone": "",
+   "email": "",
+   "profissao": "gerente"
+  }
+ },
+ "contratos": {
+  "c1": {
+   "numero": "0001",
+   "imovelId": "i1",
+   "locadorId": "l001",
+   "locatarioId": "t1",
+   "entrada": "2026-09-20",
+   "saida": "2027-09-20",
+   "valor": 800,
+   "status": "Ativo",
+   "pdf": ""
+  },
+  "c2": {
+   "numero": "0002",
+   "imovelId": "i2",
+   "locadorId": "l001",
+   "locatarioId": "t2",
+   "entrada": "2026-03-25",
+   "saida": "2028-03-25",
+   "valor": 1500,
+   "status": "Ativo",
+   "pdf": ""
+  }
+ },
+ "pagamentos": {}
+}
