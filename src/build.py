@@ -1,7 +1,7 @@
 """Monta os dois arquivos finais a partir de uma única base:
    - ../gestao-imobiliaria.html            (publicado dentro do Claude, usa o banco do Claude)
    - ../cjnproperty-pwa/index.html         (PWA para o GitHub Pages: IndexedDB + Google Sheets)
-Uso: PWA_OUT=.. python3 build.py   (gera ../index.html; sem PWA_OUT grava também ../gestao-imobiliaria.html)
+Uso: PWA_OUT=.. python3 build.py   (gera ../index.html)
 """
 import json, os, importlib.util, sys
 
@@ -38,13 +38,13 @@ shim = open(os.path.join(HERE, 'shim.js')).read().replace('__SEED__', json.dumps
 head = '''<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#0a1a33">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<style>:root{color-scheme:dark;background:#000;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}body{margin:0}</style>
+<style>:root{color-scheme:dark;background:#0a1a33;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}body{margin:0}</style>
 '''
 marker = '<script>\nconst LOGO='
 assert marker in app

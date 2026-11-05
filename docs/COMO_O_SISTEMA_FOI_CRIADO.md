@@ -20,7 +20,7 @@ Gerenciar imóveis alugados do proprietário: imóveis, locadores, locatários, 
 8. **PDF com escolha de vias**: 2 vias, só locador ou só locatário.
 9. **Renomear "Painel" para "Painel de Controlo".**
 10. **Login com usuário e senha** (primeiro tentado com conta Google; trocado por usuário e senha, sem Google Cloud).
-11. **Fundo preto** como tema padrão.
+11. **Tema preto**, depois trocado por **azul-marinho e cinza** (cores do escudo).
 12. **Fotos no site do GitHub**: o envio de foto foi criado para o site (reduz a imagem para caber numa célula da planilha).
 13. **Tempo do locatário no imóvel** (anos e meses) em Imóveis, Contratos e Pessoas.
 14. **Mais de uma forma de pagamento** no mesmo recibo (ex.: Pix 500,00 + Dinheiro 300,00).
@@ -82,7 +82,7 @@ Regras: vencimento = dia de início do contrato; situação Pago/Atrasado/Penden
 - Repositório público: nunca colocar dados reais, senhas, links privados nem a planilha.
 
 ## 8. Aparência
-- Tema preto: `--bg:#000`, cartões `#0e0e0e`, texto claro, destaque azul-claro. Cores por variáveis CSS na base.
+- Tema azul-marinho e cinza (cores do escudo): fundo `#0a1a33` com degradê, cartões `#102848`, destaque cinza-prata `#c4cbd6`. Cores por variáveis CSS na base.
 - Fontes: Bricolage Grotesque, IBM Plex Sans e Mono. Layout com menu lateral (no celular, abas no topo).
 - O nome da primeira tela é **Painel de Controlo**.
 
